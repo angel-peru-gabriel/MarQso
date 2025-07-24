@@ -5,4 +5,4 @@
 # Primera version del Bot telegram
 - Este Git servira para almacenar la 1era version 
 - Ahora q esta limpio
-- Aun no se logra?
+- Aun no se logra? ahora privado
