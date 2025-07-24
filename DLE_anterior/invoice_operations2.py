@@ -7,7 +7,7 @@ import time
 # Asegurarse de que el navegador esté configurado
 driver = setup_browser()
 
-asdasd
+
 def login_to_system():
     print("1. Introducción de credenciales")
     try:
