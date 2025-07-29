@@ -77,7 +77,7 @@ def mostrar_excel(message):
 bot.message_handler(commands=['mostrar'])(mostrar_excel)
 
 # Construcción de tabla Markdown
-def build_table_markdown(items, desc_width=30):
+def build_table_markdown(items, desc_width=30):  ############# AQUI ESTA EL ANCHO DE DESCRIPCION
     """
     Construye la tabla en ASCII. Envuelve la columna DESCRIPCION
     cada desc_width caracteres para no romper el layout.
