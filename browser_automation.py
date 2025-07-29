@@ -11,9 +11,9 @@ from selenium.webdriver.common.by import By
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Variable global para el navegador
-driver = None
+driver = None # #yo : como q creas 1ero la variable! para lugar jugar con ella
 
-def setup_browser():
+def setup_browser(download_folder: str = None):
     """
     Configura y abre el navegador Chrome en modo headless (sin interfaz gráfica),
     con ajustes para evitar ser detectado como un bot.
@@ -23,6 +23,15 @@ def setup_browser():
         try:
             logging.info("Configurando navegador...")
             options = Options()
+
+            # Si me das download_folder, lo uso como carpeta por defecto
+            if download_folder:
+                prefs = {
+                        "download.default_directory": download_folder,
+                        "download.prompt_for_download": False,
+                        "plugins.always_open_pdf_externally": True
+                                                               }
+                options.add_experimental_option("prefs", prefs)
 
             # Modo headless (sin interfaz gráfica)
             options.add_argument('--headless')

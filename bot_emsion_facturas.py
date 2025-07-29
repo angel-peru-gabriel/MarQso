@@ -4,8 +4,13 @@ from telebot import types
 from main import main_hasta_items
 from file_operations import esperar_archivo_Abuscar, rename_and_move_file, read_sheet_data # para la busque y no redundar codigo
 from invoice_operations2 import confirm_invoice_emission, add_observations,obtener_importe_total
+# para la tabla de items
 import pandas as pd
 from tabulate import tabulate  # Para un formato de tabla más legible
+# de utils
+from API_authenticate import authenticate_google_sheets
+from utils import Debouncer, RateLimiter, retry_with_backoff
+
 
 # Configuración del bot
 TOKEN = '8055516526:AAGNJ_tRmL5lGVhwBEhnCXunJGWvE8vdTtU'

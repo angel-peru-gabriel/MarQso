@@ -1,11 +1,11 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from browser_automation import setup_browser
+import browser_automation
 import time
 
 # Asegurarse de que el navegador esté configurado
-driver = setup_browser()
++driver = browser_automation.driver   # asume que ya lo inicializaste en main.py
 
 
 def login_to_system():

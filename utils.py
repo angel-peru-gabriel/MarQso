@@ -5,7 +5,7 @@ import functools
 import logging
 
 # Configuración básica de logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO) # esto es la depuracion como la de Selenium
 logger = logging.getLogger(__name__)
 
 

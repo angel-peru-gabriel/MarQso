@@ -5,37 +5,68 @@ import fnmatch
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from API_authenticate import authenticate_google_sheets
-from browser_automation import setup_browser
-#
-import gspread
 from google.oauth2.service_account import Credentials
+import browser_automation
 
-# Asegurarse de que el navegador esté configurado
-#download_folder = r"C:\Users\Aquino\Downloads"
-driver = setup_browser()
+# importamos sólo para la primera autenticación
+from API_authenticate import authenticate_google_sheets
 
-def read_sheet_data(sheet_name, credentials_path='credentials.json'):
+download_folder = r"C:\Users\Aquino\Downloads"
+
+# Autenticación global de Google Sheets (se hace UNA vez al importar)
+_GS_CLIENT = authenticate_google_sheets('credentials.json')
+
+
+def get_sheet(sheet_name: str = 'fracturas'):
     """
-    Lee los datos desde una hoja de cálculo de Google Sheets y los convierte en un diccionario.
-    Args:
-        sheet_name (str): Nombre de la hoja de cálculo a leer.
-        credentials_path (str): Ruta al archivo de credenciales JSON.
-    Returns:
-        list: Lista de diccionarios con los datos de la hoja de cálculo.
+    Abre y devuelve la primera pestaña de la hoja indicada.
     """
     try:
-        client = authenticate_google_sheets(credentials_path)
-        if client is None:
-            raise Exception("Error al autenticar con Google Sheets")
+        return _GS_CLIENT.open(sheet_name).sheet1
+    except Exception as e:
+        print(f"[get_sheet] Error al abrir hoja '{sheet_name}': {e}")
+        raise
 
-        sheet = client.open(sheet_name).sheet1
+
+def read_sheet_data(sheet_name: str = 'fracturas'):
+    """
+    Lee todos los registros de GSheet y devuelve una lista de dicts.
+    :param sheet_name: Nombre de la hoja en Google Sheets.
+    """
+    sheet = get_sheet(sheet_name)
+    try:
         records = sheet.get_all_records()
-        print(f"Datos cargados desde Google Sheets: {records}")
+        print(f"[read_sheet_data] {len(records)} filas cargadas desde '{sheet_name}'.")
         return records
     except Exception as e:
-        print(f"Error al leer la hoja de cálculo: {e}")
+        print(f"[read_sheet_data] Error: {e}")
         return []
+
+
+def write_sheet_data(items, sheet_name: str = 'fracturas'):
+    """
+    Recibe list[dict] con las claves 'CANT', 'DESCRIPCION', 'P.UNIT', 'IMPORTE'
+    y vuelca TODO en bloque a la hoja (sobreescribe A2:Dn).
+    :param items: Lista de diccionarios a escribir.
+    :param sheet_name: Nombre de la hoja en Google Sheets.
+    """
+    sheet = get_sheet(sheet_name)
+    values = [
+        [itm.get('CANT',''),
+         itm.get('DESCRIPCION',''),
+         itm.get('P.UNIT',''),
+         itm.get('IMPORTE','')]
+        for itm in items
+    ]
+    end_row = len(values) + 1
+    try:
+        sheet.update(f"A2:D{end_row}", values)
+        print(f"[write_sheet_data] {len(values)} filas escritas en hoja '{sheet_name}'.")
+    except Exception as e:
+        print(f"[write_sheet_data] Error: {e}")
+        raise
+
+
 def read_csv_data(csv_path): # lectura del archivo csv y conversion a un DICCIONARIO
 
     df = pd.read_csv(csv_path)
@@ -47,7 +78,12 @@ def read_csv_data(csv_path): # lectura del archivo csv y conversion a un DICCION
 
 def rename_and_move_file(download_folder, destination_folder): # renombrar el pdf
     print ("renombrando ...")
+    # el drive etsta de forma global, solo hay q llamarlo por su funcion del objeto brow_automation
+    driver = browser_automation.driver
+    if not driver:
+        raise RuntimeError("Llama a setup_browser() primero en main.py")
 
+    # aqui necesitas el objeto "driver" necesitas llamarlo creando una variable con ese nombre
     numero_factura_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "numeroComprobante")))
     numero_factura = numero_factura_element.text.strip().replace(" ", "")
     nombre_empresa_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "dijit_form_SimpleTextarea_1")))

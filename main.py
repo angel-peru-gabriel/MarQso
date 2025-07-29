@@ -19,8 +19,8 @@ def main_hasta_items(ruc_cliente):  # esto es lo que vas a importar
         items = read_sheet_data("fracturas") # extraemos el ruc y el diccionario, para usarlos en el login
         #ruc_cliente = 20603721692
 
-        # Configurar el navegador (si no está configurado)
-        setup_browser()
+        # Inicializo driver + carpeta de descargas
+        setup_browser(download_folder)
 
         # Iniciar sesión y navegar al sistema de facturación
         login_to_system()
