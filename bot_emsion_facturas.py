@@ -2,18 +2,10 @@ import telebot
 import os  # para la búsqueda
 from telebot import types
 from main import main_hasta_items
-from file_operations import (
-    esperar_archivo_por_patron,
-    rename_and_move_file,
-    read_sheet_data,
-    debounced_write
-)
-from invoice_operations2 import (
-    confirm_invoice_emission,
-    add_observations,
-    obtener_importe_total
-)
-import pandas as pd
+from file_operations import (esperar_archivo_por_patron, rename_and_move_file, read_sheet_data, debounced_write)
+from invoice_operations2 import (confirm_invoice_emission,add_observations,obtener_importe_total)
+import textwrap
+
 from tabulate import tabulate  # Para un formato de tabla más legible
 
 # Configuración del bot
@@ -85,13 +77,29 @@ def mostrar_excel(message):
 bot.message_handler(commands=['mostrar'])(mostrar_excel)
 
 # Construcción de tabla Markdown
-def build_table_markdown(items):
-    # Si alguna descripción contiene '\n', tabulate la mostrará en múltiples líneas
+def build_table_markdown(items, desc_width=30):
+    """
+    Construye la tabla en ASCII. Envuelve la columna DESCRIPCION
+    cada desc_width caracteres para no romper el layout.
+    """
+    wrapped = []
+    for it in items:
+        # envuelvo la descripción en varias líneas
+        lines = textwrap.wrap(str(it.get("DESCRIPCION","")), width=desc_width)
+        # reuno en un solo string con saltos
+        it_desc = "\n".join(lines) if lines else ""
+        wrapped.append({
+            "CANT":        it.get("CANT",""),
+            "DESCRIPCION": it_desc,
+            "P.UNIT":      it.get("P.UNIT",""),
+            "IMPORTE":     it.get("IMPORTE",""),
+        })
+
     tabla = tabulate(
-        items,
+        wrapped,
         headers="keys",
         tablefmt="grid",
-        showindex=range(1, len(items) + 1)
+        showindex=range(1, len(wrapped)+1)
     )
     return f"```{tabla}```"
 
