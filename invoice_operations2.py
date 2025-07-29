@@ -5,7 +5,7 @@ import browser_automation
 import time
 
 # Asegurarse de que el navegador esté configurado
-+driver = browser_automation.driver   # asume que ya lo inicializaste en main.py
+driver = browser_automation.driver   # asume que ya lo inicializaste en main.py
 
 
 def login_to_system():
