@@ -5,52 +5,27 @@ import fnmatch
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from google.oauth2.service_account import Credentials
 import browser_automation
 
-# importamos sólo para la primera autenticación
 from API_authenticate import authenticate_google_sheets
-
-download_folder = r"C:\Users\Aquino\Downloads"
+from utils import Debouncer, RateLimiter, retry_with_backoff
 
 # Autenticación global de Google Sheets (se hace UNA vez al importar)
 _GS_CLIENT = authenticate_google_sheets('credentials.json')
 
+# Rate limiter para no superar las 100 llamadas / 100s de Sheets
+_rate_limiter = RateLimiter(max_calls=100, period=100)
 
-def get_sheet(sheet_name: str = 'fracturas'):
-    """
-    Abre y devuelve la primera pestaña de la hoja indicada.
-    """
-    try:
-        return _GS_CLIENT.open(sheet_name).sheet1
-    except Exception as e:
-        print(f"[get_sheet] Error al abrir hoja '{sheet_name}': {e}")
-        raise
-
-
-def read_sheet_data(sheet_name: str = 'fracturas'):
-    """
-    Lee todos los registros de GSheet y devuelve una lista de dicts.
-    :param sheet_name: Nombre de la hoja en Google Sheets.
-    """
-    sheet = get_sheet(sheet_name)
-    try:
-        records = sheet.get_all_records()
-        print(f"[read_sheet_data] {len(records)} filas cargadas desde '{sheet_name}'.")
-        return records
-    except Exception as e:
-        print(f"[read_sheet_data] Error: {e}")
-        return []
-
-
+@retry_with_backoff(max_attempts=5, exceptions=(Exception,))
 def write_sheet_data(items, sheet_name: str = 'fracturas'):
     """
     Recibe list[dict] con las claves 'CANT', 'DESCRIPCION', 'P.UNIT', 'IMPORTE'
     y vuelca TODO en bloque a la hoja (sobreescribe A2:Dn).
-    :param items: Lista de diccionarios a escribir.
-    :param sheet_name: Nombre de la hoja en Google Sheets.
+    Aplica rate limiting y reintentos con back-off.
     """
-    sheet = get_sheet(sheet_name)
+    if not _rate_limiter.allow():
+        raise RuntimeError("Rate limit exceeded for Google Sheets API")
+    sheet = _GS_CLIENT.open(sheet_name).sheet1
     values = [
         [itm.get('CANT',''),
          itm.get('DESCRIPCION',''),
@@ -66,62 +41,76 @@ def write_sheet_data(items, sheet_name: str = 'fracturas'):
         print(f"[write_sheet_data] Error: {e}")
         raise
 
+# Debouncer para agrupar escrituras tras 30s de inactividad
+debounced_write = Debouncer(write_sheet_data, wait=30.0)
 
-def read_csv_data(csv_path): # lectura del archivo csv y conversion a un DICCIONARIO
+def read_sheet_data(sheet_name: str = 'fracturas'):
+    """
+    Lee todos los registros de GSheet y devuelve una lista de dicts.
+    """
+    try:
+        sheet = _GS_CLIENT.open(sheet_name).sheet1
+        records = sheet.get_all_records()
+        print(f"[read_sheet_data] {len(records)} filas cargadas desde '{sheet_name}'.")
+        return records
+    except Exception as e:
+        print(f"[read_sheet_data] Error: {e}")
+        return []
 
+
+def read_csv_data(csv_path):
+    """
+    Lee un CSV y lo convierte a lista de dicts.
+    """
     df = pd.read_csv(csv_path)
-    items = df.to_dict(orient='records') # el diccionario se llama ITEMS
-
-    #print(f"RUC del cliente: {ruc_cliente}")
-    print(f"Items cargados: {items}")
+    items = df.to_dict(orient='records')
+    print(f"[read_csv_data] {len(items)} registros cargados desde CSV.")
     return items
 
-def rename_and_move_file(download_folder, destination_folder): # renombrar el pdf
-    print ("renombrando ...")
-    # el drive etsta de forma global, solo hay q llamarlo por su funcion del objeto brow_automation
+
+def rename_and_move_file(download_folder, destination_folder):
+    """
+    Renombra y mueve el PDF descargado usando el driver de Selenium.
+    """
     driver = browser_automation.driver
-    if not driver:
-        raise RuntimeError("Llama a setup_browser() primero en main.py")
+    if driver is None:
+        raise RuntimeError("Driver de Selenium no inicializado. Llama a setup_browser() primero.")
 
-    # aqui necesitas el objeto "driver" necesitas llamarlo creando una variable con ese nombre
-    numero_factura_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "numeroComprobante")))
-    numero_factura = numero_factura_element.text.strip().replace(" ", "")
-    nombre_empresa_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "dijit_form_SimpleTextarea_1")))
-    nombre_empresa = nombre_empresa_element.get_attribute("value").rstrip()
+    # Esperar y extraer datos de la factura
+    numero_elem = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.ID, "numeroComprobante"))
+    )
+    numero = numero_elem.text.strip().replace(" ", "")
+    empresa_elem = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.ID, "dijit_form_SimpleTextarea_1"))
+    )
+    nombre_emp = empresa_elem.get_attribute("value").rstrip()
 
-    ruc_emisor = "20602813712"  # osea por las puras xd
-    patron_archivo = f"PDF-DOC-{numero_factura}{ruc_emisor}.pdf" # PATRON
-    print(patron_archivo)
+    # Construir patrón y buscar archivo
+    ruc_emisor = "20602813712"
+    patron = f"PDF-DOC-{numero}{ruc_emisor}.pdf"
+    print(f"[rename_and_move_file] Buscando patrón: {patron}")
+    encontrado = esperar_archivo_por_patron(download_folder, patron, timeout=30)
 
-
-    archivo_encontrado = esperar_archivo_Abuscar(download_folder, patron_archivo)
-    if archivo_encontrado:
-        nuevo_nombre = f"{numero_factura} {nombre_empresa}.pdf"
+    if encontrado:
+        nuevo = f"{numero} {nombre_emp}.pdf"
         os.makedirs(destination_folder, exist_ok=True)
-        os.rename(os.path.join(download_folder, archivo_encontrado), os.path.join(destination_folder, nuevo_nombre))
-        print(f"Archivo renombrado a: {nuevo_nombre}")
-
-        return nuevo_nombre
+        os.rename(os.path.join(download_folder, encontrado), os.path.join(destination_folder, nuevo))
+        print(f"[rename_and_move_file] Renombrado a: {nuevo}")
+        return nuevo
     else:
-        print(f"No se encontró archivo con el patrón: {patron_archivo}")
+        print(f"[rename_and_move_file] No se encontró archivo con patrón: {patron}")
+        return None
 
 
-
-# el 3er parametro no lo declaras cuando lo llamas, xq ya esta definido, cuando defines la funcion esperar
-def esperar_archivo_Abuscar(carpeta, patron, tiempo_max_espera=30): # esperar a q se descargue para recien buscar el patron
-    tiempo_inicio = time.time()
-    while time.time() - tiempo_inicio < tiempo_max_espera:
-        archivo = buscar_archivo_por_patron(carpeta, patron) # aqui llama la funcion BUSCAR
-        if archivo:
-            ################
-            return archivo # SI DEVUELVE EL ARCHIVO ENCONTRADO
-            ################
+def esperar_archivo_por_patron(carpeta, patron, timeout=30):
+    """
+    Espera hasta que un archivo aparezca según patron.
+    """
+    inicio = time.time()
+    while time.time() - inicio < timeout:
+        for f in os.listdir(carpeta):
+            if fnmatch.fnmatch(f, patron):
+                return f
         time.sleep(1)
-    return None
-
-def buscar_archivo_por_patron(carpeta, patron): # buscar el patron
-    archivos = os.listdir(carpeta)
-    for archivo in archivos:
-        if fnmatch.fnmatch(archivo, patron):
-            return archivo
     return None
