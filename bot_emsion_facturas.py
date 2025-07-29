@@ -11,6 +11,9 @@ from tabulate import tabulate  # Para un formato de tabla más legible
 TOKEN = '8055516526:AAGNJ_tRmL5lGVhwBEhnCXunJGWvE8vdTtU'
 bot = telebot.TeleBot(TOKEN)
 
+# Guardamos estado por chat
+sessions = {}
+
 # Ruta del archivo CSV
 CSV_PATH = r"C:\Users\Aquino\PycharmProjects\AQUINO_SELENIUM\facturas.csv"
 # Ruta donde se busca el pdf
@@ -142,6 +145,102 @@ def mostrar_excel(message):
     except Exception as e:
         bot.reply_to(message, text=f"❌ Error al leer la hoja de cálculo: {str(e)}")
 
+# Construye la tabla en ASCII y la envuelve en Markdown
+def build_table_markdown(items):
+    # items: lista de dicts con mismas keys, p.ej. [{"CANT":5,...},...]
+    tabla = tabulate(items,
+                     headers="keys",
+                     tablefmt="grid",
+                     showindex=range(1, len(items)+1))
+    return f"```{tabla}```"
+
+# Genera un teclado inline con un botón por fila
+def build_edit_keyboard(items):
+    kb = types.InlineKeyboardMarkup(row_width=3)
+    botones = [
+        types.InlineKeyboardButton(f"✏️ Editar fila {i+1}", callback_data=f"edit:{i}")
+        for i in range(len(items))
+    ]
+    kb.add(*botones)
+    return kb
+
+# 1) Comando /items → muestra la tabla inicial
+@bot.message_handler(commands=["items"])
+def cmd_items(message):
+    chat_id = message.chat.id
+    items = read_sheet_data("fracturas")  # tu Google Sheet
+    if not items:
+        return bot.reply_to(message, "❌ No hay ítems aún.")
+    text = build_table_markdown(items)
+    kb   = build_edit_keyboard(items)
+    sent = bot.send_message(chat_id, text,
+                            parse_mode="Markdown",
+                            reply_markup=kb)
+    # Guardamos el mensaje y la lista para posteriores ediciones
+    sessions[chat_id] = {
+        "message_id": sent.message_id,
+        "items": items
+    }
+
+# 2) Capturamos pulsación “✏️ Editar fila X”
+@bot.callback_query_handler(func=lambda c: c.data.startswith("edit:"))
+def on_edit_row(call):
+    chat_id = call.message.chat.id
+    idx = int(call.data.split(":")[1])
+    sessions[chat_id]["edit"] = {"row": idx}
+    # Preguntamos qué campo quiere editar
+    kb = types.InlineKeyboardMarkup(row_width=3)
+    kb.add(
+        types.InlineKeyboardButton("Cantidad",       callback_data=f"field:{idx}:CANT"),
+        types.InlineKeyboardButton("Descripción",    callback_data=f"field:{idx}:DESCRIPCION"),
+        types.InlineKeyboardButton("Precio Unitario",callback_data=f"field:{idx}:P.UNIT"),
+    )
+    bot.answer_callback_query(call.id)
+    bot.send_message(chat_id,
+                     f"¿Qué campo de la fila {idx+1} quieres editar?",
+                     reply_markup=kb)
+
+# 3) Capturamos elección de campo
+@bot.callback_query_handler(func=lambda c: c.data.startswith("field:"))
+def on_field_selected(call):
+    chat_id = call.message.chat.id
+    _, idx_str, field = call.data.split(":")
+    sessions[chat_id]["edit"]["field"] = field
+    bot.answer_callback_query(call.id)
+    bot.send_message(chat_id,
+                     f"Envía el *nuevo valor* para _{field}_ en la fila {int(idx_str)+1}.",
+                     parse_mode="Markdown")
+    # Preparamos el siguiente mensaje de texto para procesar el valor
+    bot.register_next_step_handler_by_chat_id(chat_id, process_new_value)
+
+# 4) Recibimos el nuevo valor, actualizamos y redibujamos la tabla
+def process_new_value(message):
+    chat_id = message.chat.id
+    text    = message.text
+    sess    = sessions.get(chat_id)
+    if not sess or "edit" not in sess:
+        return bot.reply_to(message, "❌ No hay edición en curso.")
+    idx   = sess["edit"]["row"]
+    field = sess["edit"]["field"]
+    items = sess["items"]
+
+    # Actualizamos el valor (puedes convertir a int/float si quieres)
+    items[idx][field] = text
+
+    # Redibujamos la tabla completa y reemplazamos el mensaje original
+    new_md = build_table_markdown(items)
+    new_kb = build_edit_keyboard(items)
+    bot.edit_message_text(new_md,
+                          chat_id,
+                          sess["message_id"],
+                          parse_mode="Markdown",
+                          reply_markup=new_kb)
+
+    # Confirmación y limpieza de estado
+    bot.reply_to(message, f"✅ Fila {idx+1} actualizada: {field} = {text}")
+    sess.pop("edit")
+
+
 
 
 # Comando para modificar un valor en el CSV
@@ -189,3 +288,6 @@ def modificar_csv(message):
 if __name__ == "__main__":
     print("Iniciando el bot...")
     bot.polling(none_stop=True)
+
+
+"""- Necesito la descripcion tenga salto de linea, para lograr en la app, no alterar el formato y obtener un buen acabado. """
