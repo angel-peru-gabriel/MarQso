@@ -3,7 +3,7 @@ import os  # para la búsqueda
 from telebot import types
 from main import main_hasta_items
 from file_operations import (esperar_archivo_por_patron, rename_and_move_file, read_sheet_data, debounced_write)
-from invoice_operations2 import (confirm_invoice_emission,add_observations,obtener_importe_total)
+from invoice_operations2 import (confirm_invoice_emission,add_observations,obtener_importe_total, add_data_guia)
 import textwrap
 
 from tabulate import tabulate  # Para un formato de tabla más legible
@@ -50,7 +50,21 @@ bot.message_handler(commands=['emitir'])(handle_emitir)
 def process_confirmation(message, ruc_cliente):
     texto = message.text.strip().lower()
     if texto == 'si':
+
         add_observations("AL CONTADO")
+        if (se eligio AL CONTADO O TRANSFERENCIA?):
+            add_observations("AL CONTADO")
+        else :
+            add_observations("TRANSFERENCIA")
+
+        if (eleccion_guia) :
+            while (hasta q diga no) # si es true entramos
+                #el bot pedi ingresar data de la guia
+                leido= bot.lee
+                add_data_guia()
+        else :
+            print("sin guias")
+
         confirm_invoice_emission()
         bot.reply_to(message, "✅ Factura emitida con éxito.")
         name_pdf = rename_and_move_file(download_folder, destination_folder)

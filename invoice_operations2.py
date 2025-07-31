@@ -133,33 +133,73 @@ def input_client_data(ruc_cliente):
         print(f"Error al ingresar datos del cliente: {e}")
         raise
 
-def add_observations(observation_text):
-    print("5. Agregar observaciones")
 
+def add_data_guia(serie, numero):
     """
-    Agrega observaciones a la factura antes de guardarla.
-    Args:
-        driver: WebDriver de Selenium.
-        observation_text: Texto de la observación a agregar.
+    Agrega una guía relacionada (serie y número) a la sección de documentos relacionados.
     """
     try:
-        # Confirmar factura
-        WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "factura.botonGrabarDocumento"))).click()
-        print("Factura generada con éxito.")
+        WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "docsrel.botonOtrosDocsRelacionados"))).click()
 
-        observaciones_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "docsrel.observacion")))
+        serie_documento = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "docrel.serieDocumento"))
+        )
+        serie_documento.clear()
+        serie_documento.send_keys(serie)
+
+        numero_documento = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "widget_docrel.numeroDocumentoInicial"))
+        )
+        numero_documento.clear()
+        numero_documento.send_keys(numero)
+
+        WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.ID, "docrel.botonAddDoc"))
+        ).click()
+
+        print(f"Guía agregada: Serie {serie}, Número {numero}")
+    except Exception as e:
+        print(f"Error al agregar guía: {e}")
+        raise
+
+def add_observations(observation_text, guias):
+    """
+    Agrega observaciones generales y guías relacionadas a la factura antes de emitir.
+    """
+    print("5. Agregar observaciones")
+
+    try:
+        # Click en guardar preliminar
+        WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.ID, "factura-preliminar.botonGrabarDocumento"))
+        ).click()
+
+        # Campo de observaciones
+        observaciones_element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "docsrel.observacion"))
+        )
         observaciones_element.clear()
         observaciones_element.send_keys(observation_text)
+
+        # Agregar guías si existen
+        if guias:
+            for guia in guias:
+                add_data_guia(guia["serie"], guia["numero"])
+
+            # Confirmar guías agregadas
+            WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.ID, "docrel.botonAceptar_label"))
+            ).click()
+
+        # Guardar todo
         WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.ID, "docsrel.botonGrabarDocumento"))
         ).click()
-        print(f"Observación '{observation_text}' agregada correctamente.")
-        print(f"Falta confirmar emision de factura...")
 
+        print(f"Observación '{observation_text}' agregada correctamente.")
     except Exception as e:
         print(f"Error al agregar observaciones: {e}")
         raise
-
 
 def confirm_invoice_emission():
     # Al llamar esta funcion, de frente ACEPTA la emsion, ya no hay un condicional
