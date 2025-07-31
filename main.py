@@ -2,7 +2,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from file_operations import read_csv_data, rename_and_move_file, read_sheet_data
 import time
-from browser_automation import setup_browser, close_browser#, init_driver
+import browser_automation #import setup_browser, close_browser#, init_driver
 from invoice_operations2 import login_to_system, navigate_to_invoice_section, input_client_data, create_invoice, confirm_invoice_emission, obtener_importe_total, add_observations
 
 download_folder = r"C:\Users\Aquino\Downloads"
@@ -20,7 +20,7 @@ def main_hasta_items(ruc_cliente):  # esto es lo que vas a importar
         #ruc_cliente = 20603721692
 
         # Inicializo driver + carpeta de descargas
-        setup_browser(download_folder)
+        #setup_browser(download_folder) # para no ser necesario xq ya esta inicializado
 
         # Iniciar sesión y navegar al sistema de facturación
         login_to_system()
@@ -48,7 +48,7 @@ def main_hasta_items(ruc_cliente):  # esto es lo que vas a importar
         # esto siempre se ejecutara, para cerrar el cidog
         # Cerrar el navegador
         print("🔧 Cerrando el navegador...")
-        #close_browser()
+        #browser_automation.close_browser
 
 
 if __name__ == "__main__":

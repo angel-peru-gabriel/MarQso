@@ -7,6 +7,12 @@ import time
 # Asegurarse de que el navegador esté configurado
 #driver = browser_automation.driver   # asume que ya lo inicializaste en main.py
 
+# Instancia global de WebDriver, inicializada al importar browser_automation
+driver = browser_automation.driver # en vez de usar setup_broswer()
+
+if driver is None:
+    raise RuntimeError("WebDriver no inicializado. Asegúrate de importar browser_automation para iniciar el navegador.")
+
 
 def login_to_system():
     print("1. Introducción de credenciales")

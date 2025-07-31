@@ -13,6 +13,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 # Variable global para el navegador
 driver = None # #yo : como q creas 1ero la variable! para lugar jugar con ella
 
+
+
+
 # ESO MODIFICAREMOS
 def setup_browser(download_folder: str = None):
     """
@@ -60,6 +63,13 @@ def setup_browser(download_folder: str = None):
             logging.error(f"Error al iniciar el navegador: {e}")
             raise
     return driver
+
+# == Inicialización automática al importar ==
+# Al importar este módulo, arranca el navegador una sola vez.
+try:
+  setup_browser()
+except Exception as e:
+  logging.error(f"No se pudo iniciar el navegador en import: {e}")
 
 
 def setup_browser1():
