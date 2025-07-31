@@ -9,6 +9,7 @@ import time
 
 # Instancia global de WebDriver, inicializada al importar browser_automation
 driver = browser_automation.driver # en vez de usar setup_broswer()
+# ni idea, pero deberemos cambiar a objetos
 
 if driver is None:
     raise RuntimeError("WebDriver no inicializado. Asegúrate de importar browser_automation para iniciar el navegador.")
