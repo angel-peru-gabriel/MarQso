@@ -13,6 +13,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 # Variable global para el navegador
 driver = None # #yo : como q creas 1ero la variable! para lugar jugar con ella
 
+# ESO MODIFICAREMOS
 def setup_browser(download_folder: str = None):
     """
     Configura y abre el navegador Chrome en modo headless (sin interfaz gráfica),
