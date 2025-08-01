@@ -41,30 +41,111 @@ def handle_emitir(message):
     bot.reply_to(message, f"⚙️ Iniciando emisión factura RUC {ruc}...")
     main_hasta_items(ruc)
     monto = obtener_importe_total()
+
     bot.reply_to(message, f"El monto es: {monto}")
+
     bot.reply_to(message, "¿Confirmas emisión? Responde 'si' o 'no'.")
     bot.register_next_step_handler(message, process_confirmation, ruc)
 bot.message_handler(commands=['emitir'])(handle_emitir)
 
 # Confirmación de emisión
-def process_confirmation(message, ruc_cliente):
+
+def process_confirmation(message):
+    chat_id = message.chat.id
     texto = message.text.strip().lower()
+
     if texto == 'si':
+        sessions[chat_id] = sessions.get(chat_id, {})
 
-        add_observations("AL CONTADO")
-        if (se eligio AL CONTADO O TRANSFERENCIA?):
-            add_observations("AL CONTADO")
-        else :
-            add_observations("TRANSFERENCIA")
+        # Aquí comienza el flujo de observación
+        iniciar_tipo_pago(message)
 
-        if (eleccion_guia) :
-            while (hasta q diga no) # si es true entramos
-                #el bot pedi ingresar data de la guia
-                leido= bot.lee
-                add_data_guia()
-        else :
-            print("sin guias")
+    else:
+        bot.reply_to(message, "❌ Emisión cancelada.")
 
+
+
+
+############################################### Iniciar selección de tipo de pago
+def iniciar_tipo_pago(message):
+    chat_id = message.chat.id
+    kb = types.InlineKeyboardMarkup()
+    kb.add(
+        types.InlineKeyboardButton("AL CONTADO", callback_data="pago_contado"),
+        types.InlineKeyboardButton("TRANSFERENCIA", callback_data="pago_transferencia")
+    )
+    bot.send_message(chat_id, "¿Cuál es el tipo de pago?", reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data in ["pago_contado", "pago_transferencia"])
+def capturar_tipo_pago(call):
+    chat_id = call.message.chat.id
+    sessions[chat_id] = sessions.get(chat_id, {})
+    sessions[chat_id]["tipo_pago"] = "AL CONTADO" if call.data == "pago_contado" else "TRANSFERENCIA"
+    bot.answer_callback_query(call.id)
+    iniciar_captura_guia(call.message)
+    print("funcion 3. capturar_tipo_pago")
+
+# Iniciar el flujo de captura de datos de guía
+def iniciar_captura_guia(message):
+    chat_id = message.chat.id
+    sessions[chat_id]["guias"] = []
+    bot.send_message(chat_id, "Ingrese la SERIE de la guía (Ej: B001):")
+    bot.register_next_step_handler(message, recibir_serie)
+
+def recibir_serie(message):
+    chat_id = message.chat.id
+    if "guias" not in sessions[chat_id]:
+        sessions[chat_id]["guias"] = []
+    sessions[chat_id]["guia_temp"] = {"serie": message.text.strip()}
+    bot.send_message(chat_id, "Ingrese el NÚMERO de la guía (Ej: 123456):")
+    bot.register_next_step_handler(message, recibir_numero)
+
+def recibir_numero(message):
+    chat_id = message.chat.id
+    if "guia_temp" not in sessions[chat_id]:
+        bot.reply_to(message, "❌ Error interno. Reinicie la operación.")
+        return
+    sessions[chat_id]["guia_temp"]["numero"] = message.text.strip()
+    sessions[chat_id]["guias"].append(sessions[chat_id]["guia_temp"])
+    sessions[chat_id].pop("guia_temp")
+
+    # Preguntar si desea agregar otra guía
+    kb = types.InlineKeyboardMarkup()
+    kb.add(
+        types.InlineKeyboardButton("➕ Agregar otra guía", callback_data="agregar_otra_guia"),
+        types.InlineKeyboardButton("✅ Finalizar guías", callback_data="finalizar_guias")
+    )
+    bot.send_message(chat_id, "¿Deseas agregar otra guía?", reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data in ["agregar_otra_guia", "finalizar_guias"])
+def manejar_opciones_guias(call):
+    chat_id = call.message.chat.id
+    if call.data == "agregar_otra_guia":
+        bot.answer_callback_query(call.id)
+        bot.send_message(chat_id, "Ingrese la SERIE de la nueva guía:")
+        bot.register_next_step_handler_by_chat_id(chat_id, recibir_serie)
+
+    elif call.data == "finalizar_guias":
+        bot.answer_callback_query(call.id)
+        bot.send_message(chat_id, "¿Deseas emitir la factura ahora? (si / no)")
+        bot.register_next_step_handler_by_chat_id(chat_id, confirmar_emision_despues_de_guias)
+
+
+def confirmar_emision_despues_de_guias(message):
+    texto = message.text.strip().lower()
+    if texto == "si":
+        continuar_emision(message)
+    else:
+        bot.reply_to(message, "❌ Emisión cancelada.")
+
+
+# Proceso final que llama a Selenium
+def continuar_emision(message):
+    chat_id = message.chat.id
+    tipo_pago = sessions[chat_id].get("tipo_pago", "AL CONTADO")
+    guias = sessions[chat_id].get("guias", [])
+    try:
+        add_observations(tipo_pago, guias)
         confirm_invoice_emission()
         bot.reply_to(message, "✅ Factura emitida con éxito.")
         name_pdf = rename_and_move_file(download_folder, destination_folder)
@@ -72,12 +153,12 @@ def process_confirmation(message, ruc_cliente):
         if encontrado:
             ruta = os.path.join(dir_buscar, encontrado)
             with open(ruta, 'rb') as f:
-                bot.send_document(message.chat.id, f)
+                bot.send_document(chat_id, f)
         else:
             bot.reply_to(message, "❌ PDF no encontrado.")
-    else:
-        bot.reply_to(message, "❌ Emisión cancelada.")
-bot.register_next_step_handler_by_chat_id
+    except Exception as e:
+        bot.reply_to(message, f"❌ Error durante emisión: {e}")
+
 
 # Comando /mostrar (Google Sheets)
 def mostrar_excel(message):

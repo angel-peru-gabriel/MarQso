@@ -1,8 +1,5 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from file_operations import read_csv_data, rename_and_move_file, read_sheet_data
-import time
-import browser_automation #import setup_browser, close_browser#, init_driver
+
+from file_operations import read_sheet_data
 from invoice_operations2 import login_to_system, navigate_to_invoice_section, input_client_data, create_invoice, confirm_invoice_emission, obtener_importe_total, add_observations
 
 download_folder = r"C:\Users\Aquino\Downloads"
