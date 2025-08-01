@@ -45,7 +45,7 @@ def handle_emitir(message):
     bot.reply_to(message, f"El monto es: {monto}")
 
     bot.reply_to(message, "¿Confirmas emisión? Responde 'si' o 'no'.")
-    bot.register_next_step_handler(message, process_confirmation, ruc)
+    bot.register_next_step_handler(message, process_confirmation)#,ruc) # el error solo era quitar ruc
 bot.message_handler(commands=['emitir'])(handle_emitir)
 
 # Confirmación de emisión
