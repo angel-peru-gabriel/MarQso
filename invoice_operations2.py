@@ -139,8 +139,6 @@ def add_data_guia(serie, numero):
     Agrega una guía relacionada (serie y número) a la sección de documentos relacionados.
     """
     try:
-        WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "docsrel.botonOtrosDocsRelacionados"))).click()
-
         serie_documento = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "docrel.serieDocumento"))
         )
@@ -167,39 +165,51 @@ def add_observations(observation_text, guias):
     Agrega observaciones generales y guías relacionadas a la factura antes de emitir.
     """
     print("5. Agregar observaciones")
-
     try:
-        # Click en guardar preliminar
+        print("5.0")
+        # 1) Click en guardar preliminar
         WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "factura-preliminar.botonGrabarDocumento"))
+            EC.element_to_be_clickable((By.ID, "factura.botonGrabarDocumento"))
         ).click()
+        print("5.1")
 
-        # Campo de observaciones
+        # 2) Escribir la observación
         observaciones_element = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "docsrel.observacion"))
+            EC.presence_of_element_located((By.ID, "widget_docsrel.observacion"))
         )
-        observaciones_element.clear()
-        observaciones_element.send_keys(observation_text)
+        print("5.2")
 
-        # Agregar guías si existen
+        observaciones_element.clear()
+        print("5.2.5")
+        observaciones_element.send_keys(observation_text)
+        print("5.3")
+
         if guias:
+            print("5.4")
+            # 3) Si hay guías, añadirlas antes de finalizar
+            WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "docsrel.botonOtrosDocsRelacionados_label"))).click()
+            # 4. Habro combo
+            driver.find_element(By.XPATH, '// *[ @ id = "widget_docrel.tipoDocumento"] / div[1]').click() # TODO ESTA FALTA
+
+            # 5. Elegir guia de remision
+            driver.find_element(
+                By.XPATH,
+                "//div[contains(@class,'dijitMenuItem') and normalize-space(.)='GUIA DE REMISION REMITENTE']").click() # TODO ESTE FALTA
+
             for guia in guias:
+                # tu función que mete serie + número
                 add_data_guia(guia["serie"], guia["numero"])
 
-            # Confirmar guías agregadas
-            WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.ID, "docrel.botonAceptar_label"))
-            ).click()
-
-        # Guardar todo
+        # 5) Aceptar las guías recién añadidas
         WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "docsrel.botonGrabarDocumento"))
+            EC.element_to_be_clickable((By.ID, "docsrel.botonAceptar_label")) # docrel.botonAceptar_label
         ).click()
 
-        print(f"Observación '{observation_text}' agregada correctamente.")
+        print(f"Observación '{observation_text}' y guías agregadas correctamente.")
     except Exception as e:
         print(f"Error al agregar observaciones: {e}")
         raise
+
 
 def confirm_invoice_emission():
     # Al llamar esta funcion, de frente ACEPTA la emsion, ya no hay un condicional
@@ -226,13 +236,6 @@ def confirm_invoice_emission():
     except Exception as e:
         print(f"Error al confirmar la emisión de la factura: {e}")
         raise
-
-def validar_monto(monto_leido) :
-    try :
-        print("coincidio")
-    except :
-        print("no coincidio")
-    raise
 
 
 def obtener_importe_total():
