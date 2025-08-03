@@ -96,6 +96,11 @@ def decidir_guias(message):
         bot.send_message(chat_id, "Ingrese la SERIE de la guía (Ej: B001):")
         bot.register_next_step_handler_by_chat_id(chat_id, recibir_serie)
     else:
+        ###########################################33
+        tipo_pago = sessions[chat_id].get("tipo_pago")
+        guias = sessions[chat_id].get("guias", [ ])
+        add_observations(tipo_pago, guias) # LLEGAMOS HASTA AQUI LA PAGINA u.u
+        ##############################################33
         # 👉 Aquí preguntamos antes de emitir
         bot.send_message(chat_id, "¿Confirmas emisión? Responde 'si' o 'no'.")
         bot.register_next_step_handler_by_chat_id(chat_id, confirmar_emision_after_guias)
@@ -137,6 +142,11 @@ def manejar_guias(call):
         bot.send_message(chat_id, "Ingrese la SERIE de la siguiente guía:")
         bot.register_next_step_handler_by_chat_id(chat_id, recibir_serie)
     else:
+        ###########################################33
+        tipo_pago = sessions[chat_id].get("tipo_pago")
+        guias = sessions[chat_id].get("guias", [])
+        add_observations(tipo_pago, guias) # LLEGAMOS HASTA AQUI LA PAGINA u.u
+        ##############################################33
         # 👉 Preguntamos antes de emitir
         bot.send_message(chat_id, "¿Confirmas emisión? Responde 'si' o 'no'.")
         bot.register_next_step_handler_by_chat_id(chat_id, confirmar_emision_after_guias)
@@ -150,7 +160,10 @@ def continuar_emision(message):
     guias     = sessions[chat_id].get("guias", [])
     try:
         # PARA MI Q SE ESTA FALTANDO AQUI
-        add_observations(tipo_pago, guias)
+        #add_observations(tipo_pago, guias)
+        # una mejor opcion es aqui llamar a una funcion para mostrar un resumen
+        # avanzar hasta la ultima pagina, y preguntar por la confirmacion con un if, usnado botones
+        # pero la clave es hacer una funcion, para no repetir add_observations arriba
         confirm_invoice_emission() ### AQUI NUEVAMENTE DEBERIA PREGUNTA para ver si esta bien las guias! e incluso modifcarlas
 
         bot.reply_to(message, "✅ Factura emitida con éxito.")

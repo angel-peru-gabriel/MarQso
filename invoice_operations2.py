@@ -139,14 +139,16 @@ def add_data_guia(serie, numero):
     Agrega una guía relacionada (serie y número) a la sección de documentos relacionados.
     """
     try:
+        print("7.1.agregamos serie")
         serie_documento = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "docrel.serieDocumento"))
         )
+        print("7.1.agregamos numero")
         serie_documento.clear()
         serie_documento.send_keys(serie)
 
         numero_documento = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "widget_docrel.numeroDocumentoInicial"))
+            EC.presence_of_element_located((By.ID, "docrel.numeroDocumentoInicial"))
         )
         numero_documento.clear()
         numero_documento.send_keys(numero)
@@ -188,19 +190,30 @@ def add_observations(observation_text, guias):
             print("5.4")
             # 3) Si hay guías, añadirlas antes de finalizar
             WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "docsrel.botonOtrosDocsRelacionados_label"))).click()
-            # 4. Habro combo
-            driver.find_element(By.XPATH, '// *[ @ id = "widget_docrel.tipoDocumento"] / div[1]').click() # TODO ESTA FALTA
+            print("5.5")
+            # 5) Abrir el ComboBox de Tipo Documento
+            WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH,'//*[@id="widget_docrel.tipoDocumento"]/div[1]'))
+            ).click()
+            print("5.6")
 
-            # 5. Elegir guia de remision
-            driver.find_element(
-                By.XPATH,
-                "//div[contains(@class,'dijitMenuItem') and normalize-space(.)='GUIA DE REMISION REMITENTE']").click() # TODO ESTE FALTA
-
+            # 6) Esperar a que aparezca el popup y elegir la opción deseada
+            WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((
+                    By.XPATH,
+                    "//div[@id='docrel.tipoDocumento_popup']" +
+                    "//div[@role='option' and normalize-space(.)='GUIA DE REMISION REMITENTE']"
+                ))
+            ).click()
+            print("5.7")
             for guia in guias:
                 # tu función que mete serie + número
                 add_data_guia(guia["serie"], guia["numero"])
 
         print("6")
+        WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.ID, "docrel.botonAceptar")) # docrel.botonAceptar_label
+        ).click()
         # 5) Aceptar las guías recién añadidas
         WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.ID, "docsrel.botonGrabarDocumento")) # docrel.botonAceptar_label
