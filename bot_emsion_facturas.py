@@ -96,8 +96,11 @@ def decidir_guias(message):
         bot.send_message(chat_id, "Ingrese la SERIE de la guía (Ej: B001):")
         bot.register_next_step_handler_by_chat_id(chat_id, recibir_serie)
     else:
+        # 👉 Aquí preguntamos antes de emitir
+        bot.send_message(chat_id, "¿Confirmas emisión? Responde 'si' o 'no'.")
+        bot.register_next_step_handler_by_chat_id(chat_id, confirmar_emision_after_guias)
         # si no quiere guías, vamos directo a emisión
-        continuar_emision(message)
+        #continuar_emision(message)
 
 
 # ————— Paso 3: capturar guías —————
@@ -134,8 +137,10 @@ def manejar_guias(call):
         bot.send_message(chat_id, "Ingrese la SERIE de la siguiente guía:")
         bot.register_next_step_handler_by_chat_id(chat_id, recibir_serie)
     else:
-        # terminamos guías y emitimos
-        continuar_emision(call.message)
+        # 👉 Preguntamos antes de emitir
+        bot.send_message(chat_id, "¿Confirmas emisión? Responde 'si' o 'no'.")
+        bot.register_next_step_handler_by_chat_id(chat_id, confirmar_emision_after_guias)
+
 
 
 # ————— Paso 4: emitir finalmente —————
