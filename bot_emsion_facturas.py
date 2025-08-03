@@ -56,6 +56,13 @@ def process_confirmation(message):
     # ahora pedimos tipo de pago
     iniciar_tipo_pago(message)
 
+# ES LO MISMO QUE "process_confirmation" realmente
+def confirmar_emision_after_guias(message):
+    chat_id = message.chat.id
+    if message.text.strip().lower() == 'si':
+        continuar_emision(message)
+    else:
+        bot.reply_to(message, "❌ Emisión cancelada.")
 
 # ————— Paso 1: elegir tipo de pago —————
 def iniciar_tipo_pago(message):
@@ -139,7 +146,8 @@ def continuar_emision(message):
     try:
         # PARA MI Q SE ESTA FALTANDO AQUI
         add_observations(tipo_pago, guias)
-        confirm_invoice_emission()
+        confirm_invoice_emission() ### AQUI NUEVAMENTE DEBERIA PREGUNTA para ver si esta bien las guias! e incluso modifcarlas
+
         bot.reply_to(message, "✅ Factura emitida con éxito.")
         name_pdf = rename_and_move_file(download_folder, destination_folder)
         found = esperar_archivo_por_patron(dir_buscar, name_pdf)

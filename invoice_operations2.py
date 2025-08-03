@@ -175,13 +175,13 @@ def add_observations(observation_text, guias):
 
         # 2) Escribir la observación
         observaciones_element = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "widget_docsrel.observacion"))
-        )
+            EC.presence_of_element_located((By.ID, "docsrel.observacion")) #  , widget_docsrel.observacion
+        )# el ID esaba mal
         print("5.2")
 
         observaciones_element.clear()
         print("5.2.5")
-        observaciones_element.send_keys(observation_text)
+        observaciones_element.send_keys(str(observation_text))
         print("5.3")
 
         if guias:
@@ -200,10 +200,12 @@ def add_observations(observation_text, guias):
                 # tu función que mete serie + número
                 add_data_guia(guia["serie"], guia["numero"])
 
+        print("6")
         # 5) Aceptar las guías recién añadidas
         WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "docsrel.botonAceptar_label")) # docrel.botonAceptar_label
+            EC.element_to_be_clickable((By.ID, "docsrel.botonGrabarDocumento")) # docrel.botonAceptar_label
         ).click()
+        print("7")
 
         print(f"Observación '{observation_text}' y guías agregadas correctamente.")
     except Exception as e:
