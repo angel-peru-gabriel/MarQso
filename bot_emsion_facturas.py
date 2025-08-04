@@ -8,6 +8,19 @@ import textwrap
 
 from tabulate import tabulate  # Para un formato de tabla más legible
 
+
+# --- RUTA DINÁMICA AL CÓDIGO DE WHISPER ---
+# import sys
+# from pathlib import Path
+# sys.path.append(str(Path(__file__).resolve().parent / "whisper_bot" / "src"))
+# from utils.whisper_loader import WhisperLoader
+# from utils.audio_convert import ogg_to_wav_bytes
+# from telegram.ext import MessageHandler, filters
+#
+# # Carga una sola vez; puedes elegir tiny/base/small/medium o el v3-turbo
+# whisper = WhisperLoader(model_name="small")
+
+
 # Configuración del bot
 token = '8055516526:AAGNJ_tRmL5lGVhwBEhnCXunJGWvE8vdTtU'
 bot = telebot.TeleBot(token)
@@ -19,6 +32,27 @@ sessions = {}
 dir_buscar = r"C:\Users\Aquino\Documents\ademas\FAC\automatico"
 download_folder = r"C:\Users\Aquino\Downloads"
 destination_folder = r"C:\Users\Aquino\Documents\ademas\FAC\automatico"
+
+############### WHISPER
+# async def stt_handler(update, context):
+#     voice = update.message.voice
+#     tg_file = await context.bot.get_file(voice.file_id)
+#
+#     # 1) descarga el .ogg a RAM
+#     ogg_bytes = await tg_file.download_as_bytearray()
+#
+#     # 2) convierte a WAV (16 kHz / mono) en RAM
+#     wav_bytes = ogg_to_wav_bytes(ogg_bytes)
+#
+#     # 3) transcribe
+#     result = whisper.transcribe(wav_bytes)
+#     texto  = result["text"].strip()
+#
+#     # 4) responde (por ahora solo texto completo)
+#     await update.message.reply_text(f"📝 *Transcripción:*\n\n{texto}",
+#                                     parse_mode='Markdown')
+
+
 
 # Comando /start
 def send_welcome(message):

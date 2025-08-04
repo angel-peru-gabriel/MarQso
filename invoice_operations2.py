@@ -140,20 +140,20 @@ def add_data_guia(serie, numero):
     """
     try:
         print("7.1.agregamos serie")
-        serie_documento = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "docrel.serieDocumento"))
+        serie_documento = WebDriverWait(driver, 500).until(
+            EC.presence_of_element_located((By.ID, "docrel.serieDocumento")) # esto no deberia estar dentro del bucle, a lo parecer
         )
         print("7.1.agregamos numero")
         serie_documento.clear()
         serie_documento.send_keys(serie)
 
-        numero_documento = WebDriverWait(driver, 10).until(
+        numero_documento = WebDriverWait(driver, 500).until(
             EC.presence_of_element_located((By.ID, "docrel.numeroDocumentoInicial"))
         )
         numero_documento.clear()
         numero_documento.send_keys(numero)
 
-        WebDriverWait(driver, 10).until(
+        WebDriverWait(driver, 500).until(
             EC.element_to_be_clickable((By.ID, "docrel.botonAddDoc"))
         ).click()
 
@@ -171,7 +171,7 @@ def add_observations(observation_text, guias):
         print("5.0")
         # 1) Click en guardar preliminar
         WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "factura.botonGrabarDocumento"))
+            EC.element_to_be_clickable((By.ID, "factura.botonGrabarDocumento_label")) #factura.botonGrabarDocumento
         ).click()
         print("5.1")
 
@@ -209,6 +209,10 @@ def add_observations(observation_text, guias):
             for guia in guias:
                 # tu función que mete serie + número
                 add_data_guia(guia["serie"], guia["numero"])
+
+            # ESTA PARTE ANTES ESTABA DENTRO DEL BUCLE
+            # una vez termines el bucle, recien presionas el boton de agregar guias!
+
 
         print("6")
         WebDriverWait(driver, 10).until(
