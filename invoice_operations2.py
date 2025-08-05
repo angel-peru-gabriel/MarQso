@@ -1,6 +1,8 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.keys import Keys
+
 import browser_automation
 import time
 
@@ -134,33 +136,64 @@ def input_client_data(ruc_cliente):
         raise
 
 
-def add_data_guia(serie, numero):
-    """
-    Agrega una guía relacionada (serie y número) a la sección de documentos relacionados.
-    """
+# ----------  utilidades ----------
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.keys import Keys
+
+# --- utilidades ---
+def _boton_add_habilitado(driver):
+    """True cuando el botón de ‘Adicionar’ está realmente habilitado."""
+    attr = driver.find_element(By.ID, "docrel.botonAddDoc") \
+                 .get_attribute("aria-disabled")
+    # En Dijit el atributo desaparece o pasa a 'false' cuando está activo
+    return (attr is None) or (attr.lower() == "false")
+
+# --- inserta UNA guía ---
+def add_data_guia(serie: str, numero: str, timeout: int = 15):
+
+    # 1️⃣  Serie
+    inp_serie = WebDriverWait(driver, timeout).until(
+        EC.element_to_be_clickable((By.ID, "docrel.serieDocumento"))
+    )
+    inp_serie.clear()
+    inp_serie.send_keys(serie + Keys.TAB)          # genera blur/change
+
+    # 2️⃣  Número
+    inp_num = WebDriverWait(driver, timeout).until(
+        EC.element_to_be_clickable((By.ID, "docrel.numeroDocumentoInicial"))
+    )
+    inp_num.clear()
+    inp_num.send_keys(numero + Keys.TAB)
+
+    # 3️⃣  Esperar a que el botón se habilite
+    WebDriverWait(driver, timeout).until(_boton_add_habilitado)
+
+    # 4️⃣  Clic en «Adicionar»
+    driver.find_element(By.ID, "docrel.botonAddDoc_label").click()
+
+    # 5️⃣  Si salta el popup, cerrarlo y reintentar la MISMA guía
     try:
-        print("7.1.agregamos serie")
-        serie_documento = WebDriverWait(driver, 500).until(
-            EC.presence_of_element_located((By.ID, "docrel.serieDocumento")) # esto no deberia estar dentro del bucle, a lo parecer
+        WebDriverWait(driver, 2).until(
+            EC.visibility_of_element_located((By.ID, "dlgMensaje_underlay"))
         )
-        print("7.1.agregamos numero")
-        serie_documento.clear()
-        serie_documento.send_keys(serie)
+        driver.find_element(By.XPATH,
+            "//button[normalize-space()='Aceptar' or @class='dijitButtonNode']").click()
+        add_data_guia(serie, numero, timeout)
+        return
+    except Exception:   # no apareció: seguimos
+        pass
 
-        numero_documento = WebDriverWait(driver, 500).until(
-            EC.presence_of_element_located((By.ID, "docrel.numeroDocumentoInicial"))
-        )
-        numero_documento.clear()
-        numero_documento.send_keys(numero)
+    # 6️⃣  Esperar a que los inputs queden vacíos ⇒ guía añadida
+    WebDriverWait(driver, timeout).until(
+        lambda d: d.find_element(By.ID, "docrel.serieDocumento").get_attribute("value") == ""
+    )
+    WebDriverWait(driver, timeout).until(
+        lambda d: d.find_element(By.ID, "docrel.numeroDocumentoInicial").get_attribute("value") == ""
+    )
+    print(f"✅ Guía agregada: {serie}-{numero}")
 
-        WebDriverWait(driver, 500).until(
-            EC.element_to_be_clickable((By.ID, "docrel.botonAddDoc"))
-        ).click()
-
-        print(f"Guía agregada: Serie {serie}, Número {numero}")
-    except Exception as e:
-        print(f"Error al agregar guía: {e}")
-        raise
 
 def add_observations(observation_text, guias):
     """
@@ -187,42 +220,34 @@ def add_observations(observation_text, guias):
         print("5.3")
 
         if guias:
-            print("5.4")
-            # 3) Si hay guías, añadirlas antes de finalizar
-            WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "docsrel.botonOtrosDocsRelacionados_label"))).click()
-            print("5.5")
-            # 5) Abrir el ComboBox de Tipo Documento
+            # 1) Abrir sección de “Otros Docs Relacionados”
             WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH,'//*[@id="widget_docrel.tipoDocumento"]/div[1]'))
+                EC.element_to_be_clickable((By.ID, "docsrel.botonOtrosDocsRelacionados_label"))
             ).click()
-            print("5.6")
 
-            # 6) Esperar a que aparezca el popup y elegir la opción deseada
+            # 2) Abrir combo de tipo de documento y seleccionar “GUIA DE REMISION REMITENTE”
+            WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, '//*[@id="widget_docrel.tipoDocumento"]/div[1]'))
+            ).click()
             WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((
                     By.XPATH,
-                    "//div[@id='docrel.tipoDocumento_popup']" +
-                    "//div[@role='option' and normalize-space(.)='GUIA DE REMISION REMITENTE']"
+                    "//div[@id='docrel.tipoDocumento_popup']//div[@role='option' and normalize-space(.)='GUIA DE REMISION REMITENTE']"
                 ))
             ).click()
-            print("5.7")
+
+            # 3) Llamar a add_data_guia para cada guía
             for guia in guias:
-                # tu función que mete serie + número
                 add_data_guia(guia["serie"], guia["numero"])
 
-            # ESTA PARTE ANTES ESTABA DENTRO DEL BUCLE
-            # una vez termines el bucle, recien presionas el boton de agregar guias!
+            WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.ID, "docrel.botonAceptar"))
+            ).click()
 
-
-        print("6")
+            # 5) Finalmente, cerrar la sección de observaciones
         WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "docrel.botonAceptar")) # docrel.botonAceptar_label
+            EC.element_to_be_clickable((By.ID, "docsrel.botonGrabarDocumento"))
         ).click()
-        # 5) Aceptar las guías recién añadidas
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "docsrel.botonGrabarDocumento")) # docrel.botonAceptar_label
-        ).click()
-        print("7")
 
         print(f"Observación '{observation_text}' y guías agregadas correctamente.")
     except Exception as e:
