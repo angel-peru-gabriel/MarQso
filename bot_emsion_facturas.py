@@ -9,13 +9,19 @@ import textwrap
 from tabulate import tabulate  # Para un formato de tabla más legible
 
 
-# --- RUTA DINÁMICA AL CÓDIGO DE WHISPER ---
-# import sys
-# from pathlib import Path
-# sys.path.append(str(Path(__file__).resolve().parent / "whisper_bot" / "src"))
-# from utils.whisper_loader import WhisperLoader
-# from utils.audio_convert import ogg_to_wav_bytes
-# from telegram.ext import MessageHandler, filters
+# --- RUTA DINÁMICA AL CÓDIGO DE WHISPER --- sys.path.append("../MarQso/whisper_bot/src/utils")
+from pathlib import Path
+from pathlib import Path
+import sys
+
+# Ajusta a tu carpeta real
+# ruta_whisper = Path(r"C:/Users/Aquino/PycharmProjects/MarQso/whisper_bot/src")
+# sys.path.append(str(ruta_whisper))          # ① antes de los import
+# print("Ruta añadida:", ruta_whisper, ruta_whisper.exists())
+#
+# from utils.get_whisper_models import get_whisper_model      # o …get_local_whisper_model
+# from utils.reencode_to_target_size import ogg_to_wav_bytes  # conversión en memoria
+#
 #
 # # Carga una sola vez; puedes elegir tiny/base/small/medium o el v3-turbo
 # whisper = WhisperLoader(model_name="small")
@@ -214,31 +220,67 @@ def continuar_emision(message):
 
 
 # Construcción de tabla Markdown
-def build_table_markdown(items, desc_width=30):  ############# AQUI ESTA EL ANCHO DE DESCRIPCION
-    """
-    Construye la tabla en ASCII. Envuelve la columna DESCRIPCION
-    cada desc_width caracteres para no romper el layout.
-    """
-    wrapped = []
-    for it in items:
-        # envuelvo la descripción en varias líneas
-        lines = textwrap.wrap(str(it.get("DESCRIPCION","")), width=desc_width)
-        # reuno en un solo string con saltos
-        it_desc = "\n".join(lines) if lines else ""
-        wrapped.append({
-            "CANT":        it.get("CANT",""),
-            "DESCRIPCION": it_desc,
-            "P.UNIT":      it.get("P.UNIT",""),
-            "IMPORTE":     it.get("IMPORTE",""),
-        })
+# Límites máximos por columna
+COL_LIMITS = {
+    "CANT": 2,          # hasta 99
+    "DESCRIPCION": 20,
+    "P.UNIT": 4,
+    "IMPORTE": 6,
+}
 
+HEADERS_ALIAS = {
+    "CANT": "C",
+    "DESCRIPCION": "DESCRIPCIÓN",
+    "P.UNIT": "P.U",
+    "IMPORTE": "IMP",
+}
+
+def build_table_markdown(items,
+                          col_limits=None,
+                          headers_alias=None):
+    col_limits   = col_limits   or COL_LIMITS
+    headers_alias = headers_alias or HEADERS_ALIAS
+
+    # 1) largo más grande por columna (incluye encabezados abreviados)
+    max_len = {c: len(headers_alias.get(c, c))
+               for c in col_limits}
+    for row in items:
+        for c in col_limits:
+            max_len[c] = max(max_len[c], len(str(row.get(c, ""))))
+
+    # 2) ancho final = min(real, límite)
+    widths = {c: min(max_len[c], col_limits[c])
+              for c in col_limits}
+
+    # 3) formateo de celdas
+    rows_fmt = []
+    for r in items:
+        row_fmt = {}
+        for col in ("CANT", "DESCRIPCION", "P.UNIT", "IMPORTE"):
+            txt = str(r.get(col, ""))
+
+            if col == "DESCRIPCION":
+                txt = "\n".join(textwrap.wrap(txt, width=widths[col]))
+            elif col in ("P.UNIT", "IMPORTE"):        # números → derecha
+                txt = txt.rjust(widths[col])
+            else:                                     # CANT → texto puro
+                txt = txt.ljust(widths[col])
+
+            row_fmt[col] = txt
+        rows_fmt.append(row_fmt)
+
+    # 4) tabla sin padding lateral
     tabla = tabulate(
-        wrapped,
-        headers="keys",
+        rows_fmt,
+        headers=headers_alias,
         tablefmt="grid",
-        showindex=range(1, len(wrapped)+1)
+        showindex=False,
+        maxcolwidths=[widths["CANT"], widths["DESCRIPCION"],
+                      widths["P.UNIT"], widths["IMPORTE"]],
+        minpadding=0          # 👈 elimina el espacio extra
     )
     return f"```{tabla}```"
+
 
 # Teclado inline para editar filas
 def build_edit_keyboard(items):
@@ -297,8 +339,8 @@ def process_new_value(message):
     items[idx][field] = message.text
 
     # Redibujar mensaje con tabla actualizada
-    new_md = build_table_markdown(items)
     new_kb = build_edit_keyboard(items)
+    new_md = build_table_markdown(items)
     bot.edit_message_text(
         new_md,
         message.chat.id,

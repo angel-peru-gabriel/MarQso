@@ -153,6 +153,7 @@ def _boton_add_habilitado(driver):
 # --- inserta UNA guía ---
 def add_data_guia(serie: str, numero: str, timeout: int = 15):
 
+    print("7.1")
     # 1️⃣  Serie
     inp_serie = WebDriverWait(driver, timeout).until(
         EC.element_to_be_clickable((By.ID, "docrel.serieDocumento"))
@@ -160,6 +161,7 @@ def add_data_guia(serie: str, numero: str, timeout: int = 15):
     inp_serie.clear()
     inp_serie.send_keys(serie + Keys.TAB)          # genera blur/change
 
+    print("7.2")
     # 2️⃣  Número
     inp_num = WebDriverWait(driver, timeout).until(
         EC.element_to_be_clickable((By.ID, "docrel.numeroDocumentoInicial"))
@@ -167,17 +169,21 @@ def add_data_guia(serie: str, numero: str, timeout: int = 15):
     inp_num.clear()
     inp_num.send_keys(numero + Keys.TAB)
 
+    print("7.3")
     # 3️⃣  Esperar a que el botón se habilite
     WebDriverWait(driver, timeout).until(_boton_add_habilitado)
 
+    print("7.4")
     # 4️⃣  Clic en «Adicionar»
     driver.find_element(By.ID, "docrel.botonAddDoc_label").click()
 
     # 5️⃣  Si salta el popup, cerrarlo y reintentar la MISMA guía
     try:
+        print("- 7.001")
         WebDriverWait(driver, 2).until(
             EC.visibility_of_element_located((By.ID, "dlgMensaje_underlay"))
         )
+        print("- 7.002")
         driver.find_element(By.XPATH,
             "//button[normalize-space()='Aceptar' or @class='dijitButtonNode']").click()
         add_data_guia(serie, numero, timeout)
@@ -185,16 +191,18 @@ def add_data_guia(serie: str, numero: str, timeout: int = 15):
     except Exception:   # no apareció: seguimos
         pass
 
+    print("- 7.003")
     # 6️⃣  Esperar a que los inputs queden vacíos ⇒ guía añadida
     WebDriverWait(driver, timeout).until(
         lambda d: d.find_element(By.ID, "docrel.serieDocumento").get_attribute("value") == ""
     )
+    print("- 7.004")
     WebDriverWait(driver, timeout).until(
         lambda d: d.find_element(By.ID, "docrel.numeroDocumentoInicial").get_attribute("value") == ""
     )
     print(f"✅ Guía agregada: {serie}-{numero}")
 
-
+###################################### AUN PUEDES LIMPIAR MAS ESTO, PUES REALMENTE CAMBIO UN PUNTO!
 def add_observations(observation_text, guias):
     """
     Agrega observaciones generales y guías relacionadas a la factura antes de emitir.
@@ -220,15 +228,19 @@ def add_observations(observation_text, guias):
         print("5.3")
 
         if guias:
+            print("6.1")
             # 1) Abrir sección de “Otros Docs Relacionados”
             WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.ID, "docsrel.botonOtrosDocsRelacionados_label"))
             ).click()
 
+            print("6.2")
             # 2) Abrir combo de tipo de documento y seleccionar “GUIA DE REMISION REMITENTE”
             WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH, '//*[@id="widget_docrel.tipoDocumento"]/div[1]'))
             ).click()
+
+            print("6.3")
             WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((
                     By.XPATH,
@@ -240,10 +252,11 @@ def add_observations(observation_text, guias):
             for guia in guias:
                 add_data_guia(guia["serie"], guia["numero"])
 
+            print("8.1")
             WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.ID, "docrel.botonAceptar"))
             ).click()
-
+            print("8.2")
             # 5) Finalmente, cerrar la sección de observaciones
         WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.ID, "docsrel.botonGrabarDocumento"))
