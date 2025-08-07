@@ -8,10 +8,11 @@ import textwrap
 
 from tabulate import tabulate  # Para un formato de tabla más legible
 
-
-import whisper
+import io, ffmpeg, whisper, numpy as np
+from scipy.io import wavfile       # ya tienes SciPy 1.16.1 instalada
 # import whisper_bot.src.utils.get_whisper_models
-# from whisper_bot.src.utils.reencode_to_target_size import ogg_to_wav_bytes
+# from whisper_bot
+# .src.utils.reencode_to_target_size import ogg_to_wav_bytes
 
 
 
@@ -29,24 +30,52 @@ dir_buscar = r"C:\Users\Aquino\Documents\ademas\FAC\automatico"
 download_folder = r"C:\Users\Aquino\Downloads"
 destination_folder = r"C:\Users\Aquino\Documents\ademas\FAC\automatico"
 
+
+
+def ogg_to_float32_array(ogg_bytes: bytes, sr: int = 16000) -> np.ndarray:
+    """
+    Convierte bytes OGG/Opus → ndarray float32 16 kHz mono (Whisper-ready)
+    sin tocar disco.
+    """
+    # 1. OGG → WAV (bytes) con ffmpeg
+    wav_bytes, _ = (
+        ffmpeg
+        .input('pipe:0')
+        .output('pipe:1', format='wav', ac=1, ar=str(sr))
+        .overwrite_output()
+        .run(capture_stdout=True, input=ogg_bytes, quiet=True)
+    )
+
+    # 2. WAV bytes → ndarray float32
+    sr_read, data = wavfile.read(io.BytesIO(wav_bytes))
+    assert sr_read == sr, f"Sample-rate mismatch ({sr_read} vs {sr})"
+    if data.dtype != np.float32:
+        data = data.astype(np.float32) / np.iinfo(data.dtype).max   # int16 → float32
+
+    return data
+
+# -------------- Handler ----------------
 @bot.message_handler(content_types=['voice'])
 def handle_voice_message(message):
-    # 1️⃣ Descargar el archivo de audio de Telegram:
-    file_info = bot.get_file(message.voice.file_id)
-    downloaded_file = bot.download_file(file_info.file_path)
-    audio_path = "voz_recibida.ogg"
-    with open(audio_path, "wb") as f:
-        f.write(downloaded_file)
-    print("🎧 Mensaje de voz descargado:", audio_path)
+    # ▶️ 1. Descargar OGG en RAM
+    file_info  = bot.get_file(message.voice.file_id)
+    ogg_bytes  = bot.download_file(file_info.file_path)
+    print(f"🎧 {len(ogg_bytes)/1024:.1f} KB descargados (en memoria)")
 
-    # 2️⃣ Transcribir usando Whisper (modelo local):
+    # ▶️ 2. Convertir a ndarray float32 16 kHz
+    audio_np = ogg_to_float32_array(ogg_bytes)
 
-    model = whisper.load_model("small")  # Puedes usar "base", "small", "medium", "large" o el modelo configurado
-    result = model.transcribe(audio_path, language='es')  # 'language' en 'auto' detecta automáticamente, aquí forzamos español
-    transcripcion = result.get("text")  # Texto transcrito
+    # ▶️ 3. Cargar / reutilizar modelo Whisper
+    global whisper_model
+    if 'whisper_model' not in globals():
+        whisper_model = whisper.load_model("small")   # tiny | base | small …
 
-    # 3️⃣ Enviar la transcripción de vuelta al usuario:
-    bot.reply_to(message, f"📝 Transcripción:\n{transcripcion}")
+    # ▶️ 4. Transcribir (pasamos el ndarray)
+    result = whisper_model.transcribe(audio_np, language='es')
+    texto  = result["text"].strip()
+
+    # ▶️ 5. Responder
+    bot.reply_to(message, f"📝 *Transcripción*\n\n{texto}", parse_mode='Markdown')
 
 # Comando /start
 def send_welcome(message):
