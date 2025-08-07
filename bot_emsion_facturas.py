@@ -9,22 +9,12 @@ import textwrap
 from tabulate import tabulate  # Para un formato de tabla más legible
 
 
-# --- RUTA DINÁMICA AL CÓDIGO DE WHISPER --- sys.path.append("../MarQso/whisper_bot/src/utils")
-from pathlib import Path
-from pathlib import Path
-import sys
+import whisper
+# import whisper_bot.src.utils.get_whisper_models
+# from whisper_bot.src.utils.reencode_to_target_size import ogg_to_wav_bytes
 
-# Ajusta a tu carpeta real
-# ruta_whisper = Path(r"C:/Users/Aquino/PycharmProjects/MarQso/whisper_bot/src")
-# sys.path.append(str(ruta_whisper))          # ① antes de los import
-# print("Ruta añadida:", ruta_whisper, ruta_whisper.exists())
-#
-# from utils.get_whisper_models import get_whisper_model      # o …get_local_whisper_model
-# from utils.reencode_to_target_size import ogg_to_wav_bytes  # conversión en memoria
-#
-#
-# # Carga una sola vez; puedes elegir tiny/base/small/medium o el v3-turbo
-# whisper = WhisperLoader(model_name="small")
+
+
 
 
 # Configuración del bot
@@ -39,26 +29,24 @@ dir_buscar = r"C:\Users\Aquino\Documents\ademas\FAC\automatico"
 download_folder = r"C:\Users\Aquino\Downloads"
 destination_folder = r"C:\Users\Aquino\Documents\ademas\FAC\automatico"
 
-############### WHISPER
-# async def stt_handler(update, context):
-#     voice = update.message.voice
-#     tg_file = await context.bot.get_file(voice.file_id)
-#
-#     # 1) descarga el .ogg a RAM
-#     ogg_bytes = await tg_file.download_as_bytearray()
-#
-#     # 2) convierte a WAV (16 kHz / mono) en RAM
-#     wav_bytes = ogg_to_wav_bytes(ogg_bytes)
-#
-#     # 3) transcribe
-#     result = whisper.transcribe(wav_bytes)
-#     texto  = result["text"].strip()
-#
-#     # 4) responde (por ahora solo texto completo)
-#     await update.message.reply_text(f"📝 *Transcripción:*\n\n{texto}",
-#                                     parse_mode='Markdown')
+@bot.message_handler(content_types=['voice'])
+def handle_voice_message(message):
+    # 1️⃣ Descargar el archivo de audio de Telegram:
+    file_info = bot.get_file(message.voice.file_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+    audio_path = "voz_recibida.ogg"
+    with open(audio_path, "wb") as f:
+        f.write(downloaded_file)
+    print("🎧 Mensaje de voz descargado:", audio_path)
 
+    # 2️⃣ Transcribir usando Whisper (modelo local):
 
+    model = whisper.load_model("small")  # Puedes usar "base", "small", "medium", "large" o el modelo configurado
+    result = model.transcribe(audio_path, language='es')  # 'language' en 'auto' detecta automáticamente, aquí forzamos español
+    transcripcion = result.get("text")  # Texto transcrito
+
+    # 3️⃣ Enviar la transcripción de vuelta al usuario:
+    bot.reply_to(message, f"📝 Transcripción:\n{transcripcion}")
 
 # Comando /start
 def send_welcome(message):
@@ -277,7 +265,6 @@ def build_table_markdown(items,
         showindex=False,
         maxcolwidths=[widths["CANT"], widths["DESCRIPCION"],
                       widths["P.UNIT"], widths["IMPORTE"]],
-        minpadding=0          # 👈 elimina el espacio extra
     )
     return f"```{tabla}```"
 
