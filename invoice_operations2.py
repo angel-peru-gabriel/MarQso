@@ -1,10 +1,6 @@
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.keys import Keys
-
 import browser_automation
 import time
+from config import SUNAT_RUC, SUNAT_USER,SUNAT_PASS
 
 # Asegurarse de que el navegador esté configurado
 #driver = browser_automation.driver   # asume que ya lo inicializaste en main.py
@@ -30,13 +26,13 @@ def login_to_system():
         driver.get("https://api-seguridad.sunat.gob.pe/v1/clientessol/4f3b88b3-d9d6-402a-b85d-6a0bc857746a/oauth2/loginMenuSol?originalUrl=https://e-menu.sunat.gob.pe/cl-ti-itmenu/AutenticaMenuInternet.htm&state=rO0ABXNyABFqYXZhLnV0aWwuSGFzaE1hcAUH2sHDFmDRAwACRgAKbG9hZEZhY3RvckkACXRocmVzaG9sZHhwP0AAAAAAAAx3CAAAABAAAAADdAAEZXhlY3B0AAZwYXJhbXN0AEsqJiomL2NsLXRpLWl0bWVudS9NZW51SW50ZXJuZXQuaHRtJmI2NGQyNmE4YjVhZjA5MTkyM2IyM2I2NDA3YTFjMWRiNDFlNzMzYTZ0AANleGVweA==")  # Reemplaza con la URL correcta  # URL completa
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "txtRuc"))
-        ).send_keys("20602813712")
+        ).send_keys(SUNAT_RUC)
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "txtUsuario"))
-        ).send_keys("MAXIEIRL")
+        ).send_keys(SUNAT_USER)
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "txtContrasena"))
-        ).send_keys("aquino18")
+        ).send_keys(SUNAT_PASS)
         WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, '//button[text()="Iniciar sesión"]'))
         ).click()

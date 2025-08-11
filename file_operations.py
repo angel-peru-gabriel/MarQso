@@ -11,7 +11,7 @@ from API_authenticate import authenticate_google_sheets
 from utils import Debouncer, RateLimiter, retry_with_backoff
 
 # Autenticación global de Google Sheets (se hace UNA vez al importar)
-_GS_CLIENT = authenticate_google_sheets('credentials.json')
+_GS_CLIENT = authenticate_google_sheets()
 
 # Rate limiter para no superar las 100 llamadas / 100s de Sheets
 _rate_limiter = RateLimiter(max_calls=100, period=100)

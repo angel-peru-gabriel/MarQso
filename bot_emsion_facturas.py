@@ -14,12 +14,15 @@ from scipy.io import wavfile       # ya tienes SciPy 1.16.1 instalada
 # from whisper_bot
 # .src.utils.reencode_to_target_size import ogg_to_wav_bytes
 
-
+from config import TELEGRAM_BOT_TOKEN
 
 
 
 # Configuración del bot
-token = '8055516526:AAGNJ_tRmL5lGVhwBEhnCXunJGWvE8vdTtU'
+token = TELEGRAM_BOT_TOKEN
+if not token:
+    raise RuntimeError("TELEGRAM_BOT_TOKEN missing")
+#token = '8055516526:AAGNJ_tRmL5lGVhwBEhnCXunJGWvE8vdTtU'
 bot = telebot.TeleBot(token)
 
 # Sesiones por chat_id
@@ -74,8 +77,22 @@ def handle_voice_message(message):
     result = whisper_model.transcribe(audio_np, language='es')
     texto  = result["text"].strip()
 
+    chat_id = message.chat.id
+    if sessions.get(chat_id, {}).get('await_new_row'):
+        item, err = parse_item_line(texto)
+        if err:
+            bot.reply_to(message, f"📝 Transcripción: {texto}\n\n❌ {err}\n"
+                                  f"Vuelve a decirlo o envíalo como texto.")
+            # seguimos esperando
+            return
+        _finish_add_row(chat_id, item)
+        return
+
+
     # ▶️ 5. Responder
     bot.reply_to(message, f"📝 *Transcripción*\n\n{texto}", parse_mode='Markdown')
+
+
 
 # Comando /start
 def send_welcome(message):
@@ -298,7 +315,7 @@ def build_table_markdown(items,
     return f"```{tabla}```"
 
 
-# Teclado inline para editar filas
+# Teclado inline para editar filas, q incluya "➕ Agregar fila"
 def build_edit_keyboard(items):
     kb = types.InlineKeyboardMarkup(row_width=3)
     botones = []
@@ -308,24 +325,133 @@ def build_edit_keyboard(items):
                 f"✏️ Editar fila {i+1}", callback_data=f"edit:{i}"
             )
         )
-    kb.add(*botones)
+    if botones:
+        kb.add(*botones)
+    # botón global para crear nuevas filas
+    kb.add(types.InlineKeyboardButton("➕ Agregar fila", callback_data="addrow"))
     return kb
 
 
 # Seleccionar fila a editar
+# ⬇️ En tu handler on_edit_row añade el botón "Eliminar fila"
 @bot.callback_query_handler(lambda c: c.data.startswith('edit:'))
 def on_edit_row(call):
     chat_id = call.message.chat.id
     idx = int(call.data.split(':')[1])
+    sessions.setdefault(chat_id, {})
     sessions[chat_id]['edit'] = {'row': idx}
+
     kb = types.InlineKeyboardMarkup(row_width=3)
     kb.add(
         types.InlineKeyboardButton('Cantidad', callback_data=f'field:{idx}:CANT'),
         types.InlineKeyboardButton('Descripción', callback_data=f'field:{idx}:DESCRIPCION'),
-        types.InlineKeyboardButton('Precio Unitario', callback_data=f'field:{idx}:P.UNIT')
+        types.InlineKeyboardButton('Precio Unitario', callback_data=f'field:{idx}:P.UNIT'),
     )
+    # 👉 botón para borrar la fila
+    kb.add(types.InlineKeyboardButton('🗑️ Eliminar fila', callback_data=f'del:{idx}'))
+
     bot.answer_callback_query(call.id)
     bot.send_message(chat_id, f"¿Qué campo fila {idx+1}?", reply_markup=kb)
+
+# ⬇️ Nuevo handler para borrar
+@bot.callback_query_handler(lambda c: c.data.startswith('del:'))
+def delete_row(call):
+    chat_id = call.message.chat.id
+    idx = int(call.data.split(':')[1])
+    items = sessions.get(chat_id, {}).get('items', [])
+    if 0 <= idx < len(items):
+        borrada = items.pop(idx)
+        # guardar y redibujar
+        debounced_write.call(items)
+        new_md = build_table_markdown(items)
+        new_kb = build_edit_keyboard(items)
+        bot.edit_message_text(new_md, chat_id, sessions[chat_id]['message_id'],
+                              parse_mode="Markdown", reply_markup=new_kb)
+        bot.answer_callback_query(call.id, text=f"Fila {idx+1} eliminada.")
+    else:
+        bot.answer_callback_query(call.id, text="Fila no encontrada.", show_alert=True)
+
+
+# Funcion que recibe el texto de una nueva fila
+@bot.callback_query_handler(lambda c: c.data == 'addrow')
+def start_add_row(call):
+    chat_id = call.message.chat.id
+    sessions.setdefault(chat_id, {})
+    sessions[chat_id]['await_new_row'] = True
+    bot.answer_callback_query(call.id)
+    bot.send_message(
+        chat_id,
+        "Envía la nueva fila como: CANTIDAD, DESCRIPCIÓN, P.UNIT\n"
+        "Ejemplo: 3, CINTAS AISLANTES 3M 165, 4.5\n\n"
+        "Si prefieres, envía un *audio* y lo transcribo.",
+        parse_mode="Markdown"
+    )
+    # aceptar texto
+    bot.register_next_step_handler_by_chat_id(chat_id, receive_new_row_text)
+
+def parse_item_line(texto: str):
+    """
+    Espera: 'cant, descripcion, punit'
+    Devuelve (item_dict, error_str)  ->  si hay error, item_dict = None
+    """
+    raw = [p.strip() for p in texto.replace('\n', ' ').split(',')]
+    if len(raw) < 3:
+        return None, "Formato inválido. Usa: CANTIDAD, DESCRIPCIÓN, P.UNIT"
+    cant_s, desc, precio_s = raw[0], ",".join(raw[1:-1]) or raw[1], raw[-1]
+
+    def to_float(s):
+        return float(s.replace(',', '.'))
+
+    try:
+        cant = to_float(cant_s)
+        precio = to_float(precio_s)
+    except ValueError:
+        return None, "Cantidad y precio deben ser números."
+
+    # formateos simples como strings
+    cant_txt   = str(int(cant)) if cant.is_integer() else str(cant)
+    punit_txt  = f"{precio:.2f}".rstrip('0').rstrip('.')
+    importe    = cant * precio
+    importe_txt = f"{importe:.2f}".rstrip('0').rstrip('.')
+
+    item = {
+        "CANT": cant_txt,
+        "DESCRIPCION": desc,
+        "P.UNIT": punit_txt,
+        "IMPORTE": importe_txt,
+    }
+    return item, None
+
+
+def _finish_add_row(chat_id, item):
+    items = sessions.get(chat_id, {}).get('items', [])
+    items.append(item)
+    debounced_write.call(items)
+
+    # redibujar tabla
+    new_md = build_table_markdown(items)
+    new_kb = build_edit_keyboard(items)
+    bot.edit_message_text(new_md, chat_id, sessions[chat_id]['message_id'],
+                          parse_mode="Markdown", reply_markup=new_kb)
+
+    sessions[chat_id].pop('await_new_row', None)
+    bot.send_message(chat_id, "✅ Fila agregada.")
+
+def receive_new_row_text(message):
+    chat_id = message.chat.id
+    # si ya no esperamos, ignorar
+    if not sessions.get(chat_id, {}).get('await_new_row'):
+        return
+
+    item, err = parse_item_line(message.text or "")
+    if err:
+        bot.reply_to(message, f"❌ {err}\nVuelve a enviarlo (o un audio).")
+        bot.register_next_step_handler_by_chat_id(chat_id, receive_new_row_text)
+        return
+
+    _finish_add_row(chat_id, item)
+# Procesar audio para agregar fila
+
 
 # Seleccionar campo a editar
 @bot.callback_query_handler(lambda c: c.data.startswith('field:'))
