@@ -18,6 +18,7 @@ from scipy.io import wavfile       # ya tienes SciPy 1.16.1 instalada
 from config import TELEGRAM_BOT_TOKEN
 
 
+# Importar las funciones de configuración y operaciones de Google Sheets
 # Configuración del bot
 token = TELEGRAM_BOT_TOKEN
 if not token:
