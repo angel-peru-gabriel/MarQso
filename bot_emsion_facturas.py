@@ -7,6 +7,7 @@ from invoice_operations2 import (confirm_invoice_emission,add_observations,obten
 import textwrap
 import time
 
+
 from tabulate import tabulate  # Para un formato de tabla más legible
 
 import io, ffmpeg, whisper, numpy as np
