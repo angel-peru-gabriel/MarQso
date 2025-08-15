@@ -17,6 +17,7 @@ from scipy.io import wavfile       # ya tienes SciPy 1.16.1 instalada
 
 from config import TELEGRAM_BOT_TOKEN
 
+# y ahora ?
 
 # Configuración del bot
 token = TELEGRAM_BOT_TOKEN
