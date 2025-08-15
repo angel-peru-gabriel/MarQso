@@ -294,22 +294,13 @@ def confirm_invoice_emission():
 def obtener_importe_total():
     print("Obteniendo el importe total desde la página...")
     try:
-        # Esperar a que el elemento con id "global.importeTotal" esté presente en el DOM
         WebDriverWait(driver, timeout=30).until(
             EC.presence_of_element_located((By.ID, "global.importeTotal"))
         )
-
-        # Usar Selenium para localizar el elemento y obtener su atributo "value"
         elemento_importe_total = driver.find_element(By.ID, "global.importeTotal")
         importe_total = elemento_importe_total.get_attribute("value")
-
         print(f"El importe total obtenido es: {importe_total}")
         return importe_total
-    except Exception as e:
-        print(f"Error al obtener el importe total: {e}")
-        return None
-
-
     except Exception as e:
         print(f"Error al obtener el importe total: {e}")
         return None

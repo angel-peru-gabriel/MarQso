@@ -5,6 +5,7 @@ from main import main_hasta_items
 from file_operations import (esperar_archivo_por_patron, rename_and_move_file, read_sheet_data, debounced_write)
 from invoice_operations2 import (confirm_invoice_emission,add_observations,obtener_importe_total, add_data_guia)
 import textwrap
+import time
 
 from tabulate import tabulate  # Para un formato de tabla más legible
 
@@ -22,7 +23,6 @@ from config import TELEGRAM_BOT_TOKEN
 token = TELEGRAM_BOT_TOKEN
 if not token:
     raise RuntimeError("TELEGRAM_BOT_TOKEN missing")
-#token = '8055516526:AAGNJ_tRmL5lGVhwBEhnCXunJGWvE8vdTtU'
 bot = telebot.TeleBot(token)
 
 # Sesiones por chat_id
@@ -113,13 +113,16 @@ def handle_emitir(message):
     if len(partes) != 2 or not partes[1].isdigit() or len(partes[1]) != 11:
         return bot.reply_to(message, "❌ Usa /emitir <RUC> con 11 dígitos.")
     ruc = partes[1]
+
+    # 1) Asegura que TODO esté en Sheets
+    flush_items_to_sheet(message.chat.id)    # <-- NUEVO
+
     bot.reply_to(message, f"⚙️ Iniciando emisión factura RUC {ruc}...")
     main_hasta_items(ruc)
     monto = obtener_importe_total()
     bot.reply_to(message, f"El monto es: {monto}")
     bot.reply_to(message, "¿Confirmas emisión? Responde 'si' o 'no'.")
     bot.register_next_step_handler(message, process_confirmation)
-
 
 def process_confirmation(message):
     chat_id = message.chat.id
@@ -363,6 +366,8 @@ def delete_row(call):
         borrada = items.pop(idx)
         # guardar y redibujar
         debounced_write.call(items)
+        # cargamos la sesion como sucia
+        _mark_dirty(chat_id)                 # <-- NUEVo
         new_md = build_table_markdown(items)
         new_kb = build_edit_keyboard(items)
         bot.edit_message_text(new_md, chat_id, sessions[chat_id]['message_id'],
@@ -427,6 +432,8 @@ def _finish_add_row(chat_id, item):
     items = sessions.get(chat_id, {}).get('items', [])
     items.append(item)
     debounced_write.call(items)
+    _mark_dirty(chat_id)                     # <-- NUEVO
+    # marcar como sucia la sesión
 
     # redibujar tabla
     new_md = build_table_markdown(items)
@@ -493,6 +500,8 @@ def process_new_value(message):
 
     # Programar guardado en Google Sheets
     debounced_write.call(items)
+    _mark_dirty(chat_id)                     # <-- NUEVO
+    # Logra cargarr que el cambio se guarde en Sheets
 
     bot.reply_to(message, f"✅ Fila {idx+1} {field} actualizada.")
     sess.pop('edit', None)
@@ -524,6 +533,40 @@ def mostrar_excel(message):
         bot.reply_to(message, texto[i:i+4000])
 bot.message_handler(commands=['mostrar'])(mostrar_excel)
 
+
+# Marca la sesión como "sucia" (cambios pendientes)
+# Es decir, hubo ediciones que no se han subido a Sheets
+def _mark_dirty(chat_id: int):
+    sessions.setdefault(chat_id, {})
+    sessions[chat_id]['dirty'] = True
+
+def flush_items_to_sheet(chat_id: int, wait_fallback: float = 1.0):
+    """
+    Fuerza que los cambios pendientes se suban a Sheets antes de emitir.
+    Solo actúa si hubo ediciones en esta sesión.
+    """
+    sess = sessions.get(chat_id, {})
+    if not sess.get('dirty'):
+        return  # nada que forzar
+
+    items = sess.get('items')
+    if not items:
+        return
+
+    try:
+        # Si tu Debouncer expone flush(), úsalo
+        if hasattr(debounced_write, 'flush'):
+            # Algunas implementaciones aceptan items, otras no.
+            try:
+                debounced_write.flush(items)
+            except TypeError:
+                debounced_write.flush()
+        else:
+            # Best-effort: agenda y espera un instante
+            debounced_write.call(items)
+            time.sleep(wait_fallback)
+    finally:
+        sess['dirty'] = False
 if __name__ == '__main__':
     print("Iniciando bot emisón facturas...")
     bot.polling(none_stop=True)
