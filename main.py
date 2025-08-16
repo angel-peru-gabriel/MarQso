@@ -1,6 +1,7 @@
 
 from file_operations import read_sheet_data
 from invoice_operations2 import login_to_system, navigate_to_invoice_section, input_client_data, create_invoice, confirm_invoice_emission, obtener_importe_total, add_observations
+from browser_automation import close_browser
 
 download_folder = r"C:\Users\Aquino\Downloads"
 destination_folder = r"C:\Users\Aquino\Documents\ademas\FAC\automatico"
@@ -39,13 +40,14 @@ def main_hasta_items(ruc_cliente):  # esto es lo que vas a importar
         print("El proceso terminó correctamente.")   # Confirmación explícita de éxito
     except Exception as e:
         print(f"Error durante la ejecución: {e}")
+        close_browser()
         raise # CONVIENE Q LOS PROCESO ESTE EN EL MAIN para depurarlos
 
     finally: # ESTO HACE QUE TODO SE CORTE!!!
         # esto siempre se ejecutara, para cerrar el cidog
         # Cerrar el navegador
         print("🔧 Cerrando el navegador...")
-        #browser_automation.close_browser
+        #close_browser() # quita esta linea si no quieres cerrar el navegador
 
 
 if __name__ == "__main__":

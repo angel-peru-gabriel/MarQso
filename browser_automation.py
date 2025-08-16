@@ -67,7 +67,7 @@ def setup_browser(download_folder: str = None):
 # == Inicialización automática al importar ==
 # Al importar este módulo, arranca el navegador una sola vez.
 try:
-  setup_browser()
+  setup_browser() # aqui mismo lo activamos
 except Exception as e:
   logging.error(f"No se pudo iniciar el navegador en import: {e}")
 

@@ -9,13 +9,21 @@ import time
 
 from tabulate import tabulate  # Para un formato de tabla más legible
 
-import io, ffmpeg, whisper, numpy as np
-from scipy.io import wavfile       # ya tienes SciPy 1.16.1 instalada
-# import whisper_bot.src.utils.get_whisper_models
-# from whisper_bot
-# .src.utils.reencode_to_target_size import ogg_to_wav_bytes
+# Soporte de voz opcional (no rompe si Whisper no está instalado)
+from voice_transcriber import VOICE_AVAILABLE, transcribe_ogg_bytes
 
 from config import TELEGRAM_BOT_TOKEN
+from browser_automation import close_browser
+
+
+###################
+# Falta pasar de forma modular las funciones de bot, para ponerlo solo en un main.py
+    # esto logra cerrar el navegador cuando algo falle
+    # y depurar
+# Falta cerrar el navegador cuando se cancele la factura !!!!
+###################
+
+
 
 
 # Importar las funciones de configuración y operaciones de Google Sheets
@@ -34,63 +42,36 @@ download_folder = r"C:\Users\Aquino\Downloads"
 destination_folder = r"C:\Users\Aquino\Documents\ademas\FAC\automatico"
 
 
-
-def ogg_to_float32_array(ogg_bytes: bytes, sr: int = 16000) -> np.ndarray:
-    """
-    Convierte bytes OGG/Opus → ndarray float32 16 kHz mono (Whisper-ready)
-    sin tocar disco.
-    """
-    # 1. OGG → WAV (bytes) con ffmpeg
-    wav_bytes, _ = (
-        ffmpeg
-        .input('pipe:0')
-        .output('pipe:1', format='wav', ac=1, ar=str(sr))
-        .overwrite_output()
-        .run(capture_stdout=True, input=ogg_bytes, quiet=True)
-    )
-
-    # 2. WAV bytes → ndarray float32
-    sr_read, data = wavfile.read(io.BytesIO(wav_bytes))
-    assert sr_read == sr, f"Sample-rate mismatch ({sr_read} vs {sr})"
-    if data.dtype != np.float32:
-        data = data.astype(np.float32) / np.iinfo(data.dtype).max   # int16 → float32
-
-    return data
-
-# -------------- Handler ----------------
-@bot.message_handler(content_types=['voice'])
-def handle_voice_message(message):
-    # ▶️ 1. Descargar OGG en RAM
-    file_info  = bot.get_file(message.voice.file_id)
-    ogg_bytes  = bot.download_file(file_info.file_path)
-    print(f"🎧 {len(ogg_bytes)/1024:.1f} KB descargados (en memoria)")
-
-    # ▶️ 2. Convertir a ndarray float32 16 kHz
-    audio_np = ogg_to_float32_array(ogg_bytes)
-
-    # ▶️ 3. Cargar / reutilizar modelo Whisper
-    global whisper_model
-    if 'whisper_model' not in globals():
-        whisper_model = whisper.load_model("small")   # tiny | base | small …
-
-    # ▶️ 4. Transcribir (pasamos el ndarray)
-    result = whisper_model.transcribe(audio_np, language='es')
-    texto  = result["text"].strip()
-
-    chat_id = message.chat.id
-    if sessions.get(chat_id, {}).get('await_new_row'):
-        item, err = parse_item_line(texto)
-        if err:
-            bot.reply_to(message, f"📝 Transcripción: {texto}\n\n❌ {err}\n"
-                                  f"Vuelve a decirlo o envíalo como texto.")
-            # seguimos esperando
+# -------------- Handler de voz (opcional) ----------------
+if VOICE_AVAILABLE:
+    @bot.message_handler(content_types=['voice'])
+    def handle_voice_message(message):
+        # 1) Descargar OGG a RAM
+        file_info = bot.get_file(message.voice.file_id)
+        ogg_bytes = bot.download_file(file_info.file_path)
+        print(f"🎧 {len(ogg_bytes)/1024:.1f} KB descargados (en memoria)")
+        # 2) Transcribir (módulo opcional)
+        texto = transcribe_ogg_bytes(ogg_bytes, language='es') or ""
+        chat_id = message.chat.id
+        if sessions.get(chat_id, {}).get('await_new_row'):
+            item, err = parse_item_line(texto)
+            if err:
+                bot.reply_to(message, f"📝 Transcripción: {texto}\n\n❌ {err}\n"
+                                      f"Vuelve a decirlo o envíalo como texto.")
+                return
+            _finish_add_row(chat_id, item)
             return
-        _finish_add_row(chat_id, item)
-        return
+        bot.reply_to(message, f"📝 *Transcripción*\n\n{texto}", parse_mode='Markdown')
+else:
+    # Si no hay Whisper, respondemos educadamente (sin dependencias pesadas)
+    @bot.message_handler(content_types=['voice'])
+    def handle_voice_message(message):
+        bot.reply_to(
+            message,
+            "🎤 La transcripción por voz no está habilitada en este servidor.\n"
+            "Por favor, envía el contenido como texto."
+        )
 
-
-    # ▶️ 5. Responder
-    bot.reply_to(message, f"📝 *Transcripción*\n\n{texto}", parse_mode='Markdown')
 
 
 
@@ -384,13 +365,14 @@ def start_add_row(call):
     sessions.setdefault(chat_id, {})
     sessions[chat_id]['await_new_row'] = True
     bot.answer_callback_query(call.id)
-    bot.send_message(
-        chat_id,
-        "Envía la nueva fila como: CANTIDAD, DESCRIPCIÓN, P.UNIT\n"
-        "Ejemplo: 3, CINTAS AISLANTES 3M 165, 4.5\n\n"
-        "Si prefieres, envía un *audio* y lo transcribo.",
-        parse_mode="Markdown"
+    msg = (
+            "Envía la nueva fila como: CANTIDAD, DESCRIPCIÓN, P.UNIT\n"
+            "Ejemplo: 3, CINTAS AISLANTES 3M 165, 4.5"
     )
+    if VOICE_AVAILABLE:
+        msg += "\n\nSi prefieres, envía un *audio* y lo transcribo."
+    bot.send_message(chat_id, msg, parse_mode="Markdown")
+
     # aceptar texto
     bot.register_next_step_handler_by_chat_id(chat_id, receive_new_row_text)
 
