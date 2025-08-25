@@ -1,19 +1,16 @@
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service # falta en rasbery
+from selenium.webdriver.chrome.service import Service  # falta en rasbery
 from selenium.webdriver.chrome.options import Options
 import logging
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 
-
 # ANGEL
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Variable global para el navegador
-driver = None # #yo : como q creas 1ero la variable! para lugar jugar con ella
-
-
+driver = None  # #yo : como q creas 1ero la variable! para lugar jugar con ella
 
 
 # ESO MODIFICAREMOS
@@ -31,14 +28,14 @@ def setup_browser(download_folder: str = None):
             # Si me das download_folder, lo uso como carpeta por defecto
             if download_folder:
                 prefs = {
-                        "download.default_directory": download_folder,
-                        "download.prompt_for_download": False,
-                        "plugins.always_open_pdf_externally": True
-                                                               }
+                    "download.default_directory": download_folder,
+                    "download.prompt_for_download": False,
+                    "plugins.always_open_pdf_externally": True
+                }
                 options.add_experimental_option("prefs", prefs)
 
             # Modo headless (sin interfaz gráfica)
-            #options.add_argument('--headless')
+            # options.add_argument('--headless')
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--disable-gpu')
@@ -53,7 +50,8 @@ def setup_browser(download_folder: str = None):
             options.add_argument('--disable-web-security')
 
             # Cambiar el User-Agent para simular un navegador "normal"
-            options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36')
+            options.add_argument(
+                'user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36')
 
             # Inicializar el navegador
             driver = webdriver.Chrome(options=options)
@@ -64,12 +62,13 @@ def setup_browser(download_folder: str = None):
             raise
     return driver
 
+
 # == Inicialización automática al importar ==
 # Al importar este módulo, arranca el navegador una sola vez.
 try:
-  setup_browser() # aqui mismo lo activamos
+    setup_browser()  # aqui mismo lo activamos
 except Exception as e:
-  logging.error(f"No se pudo iniciar el navegador en import: {e}")
+    logging.error(f"No se pudo iniciar el navegador en import: {e}")
 
 
 def setup_browser1():
@@ -102,11 +101,10 @@ def setup_browser1():
             raise
     return driver
 
+
 def setup_browser2():
-    
-    #Configura y abre el navegador Chrome.
-    #Asigna la instancia del navegador a la variable global `driver`.
-    
+    # Configura y abre el navegador Chrome.
+    # Asigna la instancia del navegador a la variable global `driver`.
 
     global driver
     if driver is None:

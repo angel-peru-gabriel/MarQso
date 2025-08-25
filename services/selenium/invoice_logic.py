@@ -73,43 +73,6 @@ def navigate_to_invoice_section():
         print(f"Error al navegar a la sección de facturas: {e}")
         raise
 
-
-
-def navigate_to_invoice_section2():
-    print("2. Navegacion hasta seccion de facturas")
-    """
-    Navega hasta la sección de facturas en el sistema.
-    Args:
-        driver: WebDriver de Selenium.
-    """
-    try:
-        print("     Empezando el 2...")
-        # Navegar por el menú principal
-        WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.ID, "divOpcionServicio2"))).click()
-        print("     #1")
-        WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.ID, "nivel1_11"))).click()
-        print("     #2")
-        WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.ID, "nivel2_11_5"))).click()
-        print("     #3")
-        WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.ID, "nivel3_11_5_3"))).click()
-        print("     #4")
-        WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.ID, "nivel4_11_5_3_1_1"))).click()
-        print("     #5 cambiando de iframe")
-        # Cambiar el foco al iframe de la aplicación de facturación
-        iframe = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.ID, "iframeApplication"))
-        )
-        driver.switch_to.frame(iframe)
-        print("     se logro navegacion y cambio de iframe")
-    ################################
-    # cambio a IFRAME
-    ################################
-
-    except Exception as e:
-        print(f"Error al navegar a la sección de facturas: {e}")
-        raise
-
-
 def input_client_data(ruc_cliente):
     print("3. Ingresamos datos del cliente")
     """
@@ -273,13 +236,6 @@ def confirm_invoice_emission():
         driver: WebDriver de Selenium.
     """
     try:
-
-
-        # Confirmar factura
-        #WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "factura.botonGrabarDocumento"))).click()
-        #print("Factura generada con éxito.")
-        #factura.botonGrabarDocumento_label
-
         WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.ID, "factura-preliminar.botonGrabarDocumento"))).click()
         WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "dlgBtnAceptarConfirm_label"))).click()
         print("Factura emitida con éxito.")
@@ -289,7 +245,6 @@ def confirm_invoice_emission():
     except Exception as e:
         print(f"Error al confirmar la emisión de la factura: {e}")
         raise
-
 
 def obtener_importe_total():
     print("Obteniendo el importe total desde la página...")
@@ -354,16 +309,6 @@ def create_invoice(items):
             # Confirmar adición del ítem
             WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "item.botonAceptar_label"))).click()
 
-
-            ############ Asegurarse de que el sistema procese el ítem antes de continuar
-            #WebDriverWait(driver, 10).until(lambda d: d.find_element(By.ID, "global.importeTotal").get_attribute("value").strip() != "")
-            #time.sleep(1)  # Agregar un tiempo adicional para estabilizar el DOM
-            #####
-            # Obtener el importe parcial (para depuración)
-            #parcial = driver.find_element(By.ID, "global.importeTotal").get_attribute("value")
-            #print(f"Importe parcial después de agregar ítem: {parcial}")
-            #######################
-
             ############ Asegurarse de que el sistema procese el ítem antes de continuar
         WebDriverWait(driver, 10).until(
             lambda d: d.find_element(By.ID, "global.importeTotal").get_attribute("value").strip() != ""
@@ -377,17 +322,6 @@ def create_invoice(items):
         #return importe_total
         ########################################
 
-
-        # Confirmar factura
-        #WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "factura.botonGrabarDocumento"))).click()
-        #print("Factura generada con éxito.")
-        #factura.botonGrabarDocumento_label
-        # Llamar a la función para agregar observaciones
-        #add_observations("AL CONTADO") # este bota el error, cuando diciendo : error al agregar observaciones!
-        #print("se agrego los comentarios!")
-
-        # Llamar a la función para confirmar la emisión
-        #confirm_invoice_emission(driver)  ahora ello esta en el main!!!!!!
 
     except Exception as e:
         print(f"Error al agregar la factura: {e}")
