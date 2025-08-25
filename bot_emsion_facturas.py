@@ -492,28 +492,29 @@ def process_new_value(message):
 
 
 # Comando /items
-@bot.message_handler(commands=['items'])
-def cmd_items(message):
-    chat_id = message.chat.id
-    items = read_sheet_data('fracturas')
-    if not items:
-        bot.reply_to(message, "❌ No hay ítems aún.")
-        return
-    text = build_table_markdown(items)
-    kb = build_edit_keyboard(items)
-    sent = bot.send_message(chat_id, text, parse_mode="Markdown", reply_markup=kb)
-    sessions[chat_id] = {"message_id": sent.message_id, "items": items}
+# @bot.message_handler(commands=['items'])
+# def cmd_items(message):
+#     chat_id = message.chat.id
+#     items = read_sheet_data('fracturas')
+#     if not items:
+#         bot.reply_to(message, "❌ No hay ítems aún.")
+#         return
+#     text = build_table_markdown(items)
+#     kb = build_edit_keyboard(items)
+#     sent = bot.send_message(chat_id, text, parse_mode="Markdown", reply_markup=kb)
+#     sessions[chat_id] = {"message_id": sent.message_id, "items": items}
 
 # Comando /mostrar (Google Sheets)
-def mostrar_excel(message):
-    records = read_sheet_data('fracturas')
-    if not records:
-        bot.reply_to(message, "❌ No hay datos en la hoja.")
-        return
-    texto = tabulate(records, headers="keys", tablefmt="grid", showindex=True)
-    for i in range(0, len(texto), 4000):
-        bot.reply_to(message, texto[i:i+4000])
-bot.message_handler(commands=['mostrar'])(mostrar_excel)
+#ya no se usa, sino items
+# def mostrar_excel(message):
+#     records = read_sheet_data('fracturas')
+#     if not records:
+#         bot.reply_to(message, "❌ No hay datos en la hoja.")
+#         return
+#     texto = tabulate(records, headers="keys", tablefmt="grid", showindex=True)
+#     for i in range(0, len(texto), 4000):
+#         bot.reply_to(message, texto[i:i+4000])
+# bot.message_handler(commands=['mostrar'])(mostrar_excel)
 
 
 # Marca la sesión como "sucia" (cambios pendientes)
@@ -549,6 +550,7 @@ def flush_items_to_sheet(chat_id: int, wait_fallback: float = 1.0):
             time.sleep(wait_fallback)
     finally:
         sess['dirty'] = False
+
 if __name__ == '__main__':
     print("Iniciando bot emisón facturas...")
     bot.polling(none_stop=True)

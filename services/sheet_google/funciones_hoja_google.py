@@ -83,3 +83,16 @@ def flush_items_to_sheet(chat_id: int, wait_fallback: float = 1.0):
             time.sleep(wait_fallback)
     finally:
         sess['dirty'] = False
+
+def read_sheet_data(sheet_name: str = 'fracturas'):
+    """
+    Lee todos los registros de GSheet y devuelve una lista de dicts.
+    """
+    try:
+        sheet = _GS_CLIENT.open(sheet_name).sheet1
+        records = sheet.get_all_records()
+        print(f"[read_sheet_data] {len(records)} filas cargadas desde '{sheet_name}'.")
+        return records
+    except Exception as e:
+        print(f"[read_sheet_data] Error: {e}")
+        return []
