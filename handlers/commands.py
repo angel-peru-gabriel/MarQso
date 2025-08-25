@@ -30,7 +30,7 @@ def handle_emitir(message):
     bot.reply_to(message, f"⚙️ Iniciando emisión factura RUC {ruc_cliente}...")
 
 
-
+#
 
 def register_commands(bot):
     """
