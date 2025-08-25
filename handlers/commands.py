@@ -1,8 +1,8 @@
 from bot_emision_facturas import bot
 from services.sheet_google.funciones_hoja_google import flush_items_to_sheet
 from services.selenium.invoice_logic import login_to_system, navigate_to_invoice_section, input_client_data, create_invoice
-from utils.file_operations import read_sheet_data
-from guias import ask_for_guias, confirm_billing
+# from utils.file_operations import read_sheet_data
+# from guias import ask_for_guias, confirm_billing
 
 def send_welcome(message):
     comandos = (

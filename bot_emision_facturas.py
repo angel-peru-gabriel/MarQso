@@ -3,6 +3,7 @@ from config import TELEGRAM_BOT_TOKEN
 from handlers.commands import register_commands
 from handlers.items import register_items_handlers
 from handlers.billing import register_billing_handlers
+from handlers.sessions import get_session, set_session, delete_session
 
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 
