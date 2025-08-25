@@ -122,7 +122,9 @@ def flush_items_to_sheet(chat_id: int, wait_fallback: float = 1.0):
     finally:
         session['dirty'] = False
 
-def registrar_manejadores_items(bot):
+
+# esto lo inicializa en bot_emision_facturas.py
+def register_items_handlers(bot):
     """
     Registra los manejadores relacionados con los ítems.
     """
